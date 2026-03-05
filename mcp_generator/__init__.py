@@ -19,6 +19,7 @@ Usage:
 """
 
 from .cli import main
+from .generate_client import generate_client_package
 from .generator import generate_all, generate_main_composition_server, generate_modular_servers
 from .introspection import (
     enrich_spec_tags,
@@ -35,6 +36,7 @@ __version__ = "3.1.0"
 
 __all__ = [
     "main",
+    "generate_client_package",
     "generate_all",
     "generate_modular_servers",
     "generate_main_composition_server",

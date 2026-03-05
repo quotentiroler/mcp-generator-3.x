@@ -5,7 +5,6 @@ Handles command-line interface, logging setup, and orchestrates the generation p
 """
 
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -155,8 +154,6 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
 
     # Use current working directory for all operations
     src_dir = Path.cwd()
-    # For scripts and templates, use the package location (mcp_generator/)
-    package_dir = Path(__file__).parent
 
     # Handle URL download if specified
     if args.url:
@@ -220,86 +217,27 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         print("\n🔨 Generating Python API client from OpenAPI specification...")
         print("   This is a one-time step that may take a few moments.")
 
-        # Try to find the script in multiple locations
-        # 1. Development: mcp_generator/scripts/generate_openapi_client.py
-        # 2. Installed: site-packages/mcp_generator/scripts/generate_openapi_client.py
-        script_locations = [
-            package_dir / "scripts" / "generate_openapi_client.py",  # Both dev and installed
-        ]
-
-        script_path = None
-        for location in script_locations:
-            if location.exists():
-                script_path = location
-                break
-
-        if not script_path:
-            print("\n❌ API Client Generator Not Found")
-            print("\nSearched in:")
-            for loc in script_locations:
-                print(f"   - {loc}")
-            print("\n💡 The scripts package may not be installed correctly.")
-            print("   Please reinstall mcp-generator:")
-            print("   pip install --force-reinstall mcp-generator")
-            print("   OR")
-            print("   uv pip install --reinstall mcp-generator")
-            sys.exit(1)
-
-        print(f"   Running: uv run {script_path.name}")
         try:
-            import platform
+            import json as _json
 
-            is_windows = platform.system() == "Windows"
+            with open(openapi_spec, encoding="utf-8") as _f:
+                spec = _json.load(_f)
 
-            cmd = [
-                sys.executable,
-                str(script_path),
-                "--openapi-spec",
-                str(openapi_spec.resolve()),
-                "--output-dir",
-                str(generated_dir.resolve()),
-            ]
+            from .generate_client import generate_client_package
 
-            # Stream output in real time
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                shell=is_windows,
-                cwd=str(src_dir),
-            )
-            try:
-                if process.stdout:
-                    for line in process.stdout:
-                        print(line, end="")
-            except Exception as stream_exc:
-                print(f"\n⚠️ Error streaming output: {stream_exc}")
-            process.wait()
-
-            if process.returncode != 0:
+            generated_dir.mkdir(parents=True, exist_ok=True)
+            ok = generate_client_package(spec, generated_dir)
+            if not ok:
                 print("\n❌ API Client Generation Failed")
-                print(
-                    "\nThe OpenAPI Generator encountered an error while generating the Python client."
-                )
-                print("\n💡 To fix this:")
-                print("   1. Verify your openapi.json is valid:")
+                print("\n💡 Verify your openapi.json is valid:")
                 print("      python -m mcp_generator.scripts.validate_openapi")
-                print("   2. Check that OpenAPI Generator is installed:")
-                print("      npx @openapitools/openapi-generator-cli version")
-                print("   3. Try generating manually:")
-                print("      uv run -m mcp_generator.scripts.generate_openapi_client")
-                print()
                 sys.exit(1)
 
             print("   ✅ API client generated successfully")
         except Exception as e:
-            print(f"\n❌ Error: {e}")
-            print("\n💡 Please generate the API client manually:")
-            print("   uv run -m mcp_generator.scripts.generate_openapi_client")
-            print()
+            print(f"\n❌ Error generating API client: {e}")
+            print("\n💡 Verify your openapi.json is valid:")
+            print("      python -m mcp_generator.scripts.validate_openapi")
             sys.exit(1)
 
     try:
