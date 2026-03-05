@@ -178,14 +178,13 @@ from middleware.authentication import ApiClientContextMiddleware
             if jwt_verifier:
                 asgi_middleware = build_authentication_stack(jwt_verifier, require_auth=True)
 
-                from starlette.middleware import Middleware as StarletteMiddleware
                 from fastmcp.server.event_store import EventStore
 
                 event_store = EventStore()
                 http_app = app.http_app(
                     path="/mcp",
                     event_store=event_store,
-                    middleware=[StarletteMiddleware(m) for m in asgi_middleware] if asgi_middleware else None,
+                    middleware=asgi_middleware if asgi_middleware else None,
                 )
 
                 import uvicorn, anyio
@@ -292,8 +291,9 @@ def main():
         except Exception as e:
             logger.warning(f"Could not load fastmcp.json: {{e}}")
 
-    # Get default validate_tokens from config
-    default_validate_tokens = fastmcp_config.get("middleware", {{}}).get("config", {{}}).get("authentication", {{}}).get("validate_tokens", False)
+    # Get default validate_tokens from config (handle both bool and string values)
+    _raw_validate = fastmcp_config.get("middleware", {{}}).get("config", {{}}).get("authentication", {{}}).get("validate_tokens", False)
+    default_validate_tokens = _raw_validate if isinstance(_raw_validate, bool) else str(_raw_validate).lower() not in ("false", "0", "no", "")
 
     # Build comprehensive description
     description_parts = [f"{{API_TITLE}} - FastMCP 3.x MCP Server"]
