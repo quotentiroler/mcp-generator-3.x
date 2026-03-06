@@ -1,6 +1,6 @@
 [project]
 name = "mcp-generator"
-version = "3.1.0-rc3"
+version = "3.1.0-rc4"
 description = "OpenAPI to FastAPI MCP Server Generator"
 authors = [
     {name = "Maximilian Nussbaumer", email = "maxivities@gmail.com"}
@@ -45,6 +45,10 @@ dev = [
     "mypy>=1.13.0",
     "fastmcp>=3.0.0",  # For testing generated servers that use FastMCP 3.x features
     "cryptography>=43.0.0",  # For testing storage encryption
+]
+docs = [
+    "mkdocs-material>=9.5.0",
+    "mkdocs-autorefs>=1.0.0",
 ]
 
 [tool.ruff]

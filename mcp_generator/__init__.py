@@ -32,7 +32,7 @@ from .models import ApiMetadata, ModuleSpec, ParameterInfo, ResourceSpec, Securi
 from .test_generator import generate_auth_flow_tests, generate_tool_tests
 from .utils import get_pydantic_model_schema, sanitize_name
 
-__version__ = "3.1.0-rc3"
+__version__ = "3.1.0-rc4"
 
 __all__ = [
     "main",
