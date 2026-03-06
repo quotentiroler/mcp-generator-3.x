@@ -46,6 +46,35 @@ def sanitize_method_name(operation_id: str) -> str:
     return result
 
 
+def sanitize_pep440_version(version: str) -> str:
+    """Coerce an arbitrary version string into PEP 440 format.
+
+    OpenAPI specs may contain versions like ``0.0.2-alpha.202512290159.ce05f5f0``
+    which are not valid PEP 440.  We extract the numeric base and any pre-release
+    segment and normalise them.
+    """
+    # Try to extract a base version (digits + dots)
+    m = re.match(r"(\d+(?:\.\d+)*)", version)
+    if not m:
+        return "0.0.0"
+    base = m.group(1)
+    rest = version[m.end():]
+
+    # Look for a pre-release tag like -alpha, -beta, -rc
+    pre = re.match(r"[\-.]?(alpha|beta|rc|dev)(.*)", rest, re.IGNORECASE)
+    if pre:
+        tag = pre.group(1).lower()
+        # Extract first numeric suffix (e.g. 202512290159) for ordering
+        num_match = re.search(r"(\d+)", pre.group(2))
+        num = num_match.group(1) if num_match else "0"
+        # Map to PEP 440 pre-release: .devN, aN, bN, rcN
+        mapping = {"alpha": "a", "beta": "b", "rc": "rc", "dev": ".dev"}
+        suffix = mapping.get(tag, "a")
+        return f"{base}{suffix}{num}"
+
+    return base
+
+
 # ---------------------------------------------------------------------------
 # Schema -> Python type mapping
 # ---------------------------------------------------------------------------
@@ -501,7 +530,7 @@ def generate_client_package(
     info = spec.get("info", {})
     api_title = info.get("title", "Generated API")
     api_description = info.get("description", "")
-    api_version = info.get("version", "1.0.0")
+    api_version = sanitize_pep440_version(info.get("version", "1.0.0"))
 
     # Auto-discover tags from endpoint definitions
     discovered = enrich_spec_tags(spec)
