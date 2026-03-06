@@ -609,7 +609,7 @@ def generate_client_package(
     # pyproject.toml (so it's installable)
     pyproject = f'''[build-system]
 requires = ["setuptools>=61.0"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "openapi-client"
