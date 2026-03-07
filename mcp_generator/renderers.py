@@ -128,7 +128,12 @@ def render_fastmcp_template(api_metadata, security_config, modules, total_tools,
 
 
 def generate_tool_for_method(
-    api_var_name: str, method_name: str, method, tag_name: str = "", default_timeout: int | None = 30, validate_output: bool | None = None
+    api_var_name: str,
+    method_name: str,
+    method,
+    tag_name: str = "",
+    default_timeout: int | None = 30,
+    validate_output: bool | None = None,
 ) -> str:
     """Generate MCP tool function for a single API method."""
     # Skip internal methods
@@ -559,7 +564,9 @@ async def {spec.resource_name}_resource({", ".join(func_params)}) -> str:
 
 
 def generate_server_module(
-    api_var_name: str, api_class, resource_endpoints: list[dict[str, Any]] | None = None,
+    api_var_name: str,
+    api_class,
+    resource_endpoints: list[dict[str, Any]] | None = None,
     validate_output: bool | None = None,
 ) -> ModuleSpec:
     """Generate a single server module for one API class.
@@ -644,7 +651,10 @@ def _get_api_instances(openapi_client: ApiClient) -> dict:
             continue
 
         tool_code = generate_tool_for_method(
-            api_var_name, method_name, method, tag_name=tag_name,
+            api_var_name,
+            method_name,
+            method,
+            tag_name=tag_name,
             validate_output=validate_output,
         )
         if tool_code:

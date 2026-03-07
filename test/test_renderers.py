@@ -109,9 +109,16 @@ class TestRenderFastmcpTemplate:
         )
         features = json.loads(content)["features"]
         expected_keys = {
-            "tool_tags", "tool_timeouts", "search_tools", "code_mode",
-            "response_limiting", "ping_middleware", "multi_auth",
-            "component_versioning", "validate_output", "dynamic_visibility",
+            "tool_tags",
+            "tool_timeouts",
+            "search_tools",
+            "code_mode",
+            "response_limiting",
+            "ping_middleware",
+            "multi_auth",
+            "component_versioning",
+            "validate_output",
+            "dynamic_visibility",
             "opentelemetry",
         }
         assert expected_keys.issubset(set(features.keys()))
