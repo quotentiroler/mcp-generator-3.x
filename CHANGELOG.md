@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/47
 
 
+
+- 🔧 Chores & Improvements: CI/CD and internal maintenance
+- 🐛 Bug Fixes: Corrected repo name for release check (mcp-generator-2.0 vs mcp-generator-3.x)
+- 📚 Documentation: Update CHANGELOG references and PR notes
+- ⚠️ Breaking Changes: None detected
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/49
+
+
 ## [3.1.0] - 2026-03-06
 
 ### Added
