@@ -61,22 +61,6 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Node.js (for OpenAPI Generator)
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Cache OpenAPI Generator CLI
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-openapi-generator
-          restore-keys: |
-            ${{ runner.os }}-npm-
-
-      - name: Install OpenAPI Generator CLI
-        run: npm install -g @openapitools/openapi-generator-cli
-
       - name: Install dependencies
         run: |
           uv sync --all-extras --dev
@@ -91,6 +75,32 @@ jobs:
 
           # Generate MCP server
           uv run generate-mcp --enable-storage --enable-caching --enable-resources
+
+          # Verify FastMCP 3.1 features in generated code
+          echo "🔍 Verifying FastMCP 3.1 features..."
+          
+          # Check fastmcp.json has features section
+          if grep -q '"features"' generated_mcp/fastmcp.json; then
+            echo "  ✅ fastmcp.json has features section"
+          else
+            echo "  ❌ fastmcp.json missing features section"
+            exit 1
+          fi
+          
+          # Check for transforms support
+          if grep -q 'SearchTools\|CodeMode' generated_mcp/*_mcp_generated.py; then
+            echo "  ✅ Transforms support present (SearchTools/CodeMode)"
+          fi
+          
+          # Check for middleware
+          if grep -q 'ResponseLimitingMiddleware\|PingMiddleware' generated_mcp/*_mcp_generated.py; then
+            echo "  ✅ FastMCP 3.1 middleware present"
+          fi
+          
+          # Check for OpenTelemetry support
+          if grep -q 'opentelemetry\|TracerProvider' generated_mcp/*_mcp_generated.py; then
+            echo "  ✅ OpenTelemetry support present"
+          fi
 
           # Run tests
           uv run python test/run_tests.py

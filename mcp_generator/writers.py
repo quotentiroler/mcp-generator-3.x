@@ -75,7 +75,7 @@ def write_middleware_files(
             "from .authentication import ApiClientContextMiddleware, JWTAuthenticationBackend, AuthenticatedIdentity\n"
         )
         f.write(
-            "from .oauth_provider import build_authentication_stack, create_remote_auth_provider, create_jwt_verifier, RequireScopesMiddleware\n"
+            "from .oauth_provider import build_authentication_stack, create_remote_auth_provider, create_jwt_verifier, RequireScopesMiddleware, create_multi_auth_verifier\n"
         )
         f.write("from .event_store import InMemoryEventStore\n")
         f.write("\n__all__ = [\n")
@@ -85,6 +85,7 @@ def write_middleware_files(
         f.write('    "build_authentication_stack",\n')
         f.write('    "create_remote_auth_provider",\n')
         f.write('    "create_jwt_verifier",\n')
+        f.write('    "create_multi_auth_verifier",\n')
         f.write('    "RequireScopesMiddleware",\n')
         f.write('    "InMemoryEventStore",\n')
         f.write("]\n")
@@ -147,6 +148,16 @@ to interact with the {api_metadata.title} API through the Model Context Protocol
 - ✅ **Modular Architecture** - {len(modules)} independent server modules
 - ✅ **SSE Support** - Server-Sent Events for streaming responses
 - ✅ **Session Management** - Stateful HTTP sessions with event store
+- ✅ **Tool Tags** - Automatic per-module tag grouping (FastMCP 3.1)
+- ✅ **Tool Timeouts** - Configurable per-tool timeout (default 30s)
+- ✅ **SearchTools** - BM25 text search over tool catalog (opt-in via fastmcp.json)
+- ✅ **CodeMode** - Experimental meta-tool transform (opt-in via fastmcp.json)
+- ✅ **ResponseLimitingMiddleware** - Safe UTF-8 truncation of oversized responses
+- ✅ **PingMiddleware** - HTTP keepalive for long-lived connections
+- ✅ **MultiAuth** - Compose multiple token verifiers (opt-in via fastmcp.json)
+- ✅ **Component Versioning** - Deprecated endpoints annotated automatically
+- ✅ **Dynamic Visibility** - Per-session component toggling via scopes (opt-in)
+- ✅ **OpenTelemetry** - Tracing with MCP semantic conventions (opt-in via fastmcp.json)
 
 ## Generated Modules
 

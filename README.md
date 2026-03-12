@@ -1,11 +1,12 @@
-# MCP Generator 2.0
+# MCP Generator 3.1
 
-**🚀 OpenAPI to FastMCP 2.x Server Generator**
+**🚀 OpenAPI to FastMCP 3.x Server Generator**
 
-[![GitHub Release](https://img.shields.io/github/v/release/quotentiroler/mcp-generator-2.0?include_prereleases&label=version)](https://github.com/quotentiroler/mcp-generator-2.0/releases)
+[![GitHub Release](https://img.shields.io/github/v/release/quotentiroler/mcp-generator-3.x?label=version)](https://github.com/quotentiroler/mcp-generator-3.x/releases)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.11+](https://img.shields.io/badge/python-v3.11-3776ab.svg)](https://www.python.org/downloads/)
-[![FastMCP 2.x](https://img.shields.io/badge/FastMCP-2.x-green.svg)](https://github.com/jlowin/fastmcp)
+[![FastMCP 3.x](https://img.shields.io/badge/FastMCP-3.x-green.svg)](https://github.com/PrefectHQ/fastmcp)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://quotentiroler.github.io/mcp-generator-3.x/)
 
 Transform any OpenAPI specification into a production-ready Model Context Protocol (MCP) server with enterprise-grade authentication, modular architecture, and comprehensive middleware support.
 
@@ -13,7 +14,7 @@ Transform any OpenAPI specification into a production-ready Model Context Protoc
 
 ## 🎯 Overview
 
-MCP Generator 2.0 is an advanced code generator that automatically creates FastMCP 2.x servers from OpenAPI 3.0.x/3.1.x specifications. It bridges REST APIs and AI agents by generating fully-functional MCP tools that AI assistants like Claude, ChatGPT, and others can use to interact with your APIs.
+MCP Generator 3.1 is an advanced code generator that automatically creates FastMCP 3.x servers from OpenAPI 3.0.x/3.1.x specifications. It bridges REST APIs and AI agents by generating fully-functional MCP tools that AI assistants like Claude, ChatGPT, and others can use to interact with your APIs.
 
 ### Supported OpenAPI Versions
 
@@ -21,21 +22,83 @@ MCP Generator 2.0 is an advanced code generator that automatically creates FastM
 - ✅ **OpenAPI 3.1.x** - Fully supported
 - ✅ **Swagger 2.0** - Fully supported
 
-> **Note**: Both JSON and YAML formats are supported. The generator uses OpenAPI Generator CLI under the hood, which handles both formats seamlessly.
+> **Note**: Both JSON and YAML formats are supported. The generator includes a pure Python OpenAPI client generator — no Java or Node.js required.
 
-## 🏆 Why MCP Generator 2.0?
+## 🏆 Why MCP Generator 3.1?
 
-| Feature                     | MCP Generator 2.0                          | Typical Generators         |
+| Feature                     | MCP Generator 3.1                          | Typical Generators         |
 | --------------------------- | ------------------------------------------ | -------------------------- |
 | **Architecture**      | Modular, composable sub-servers            | Monolithic single file     |
 | **Authentication**    | JWT validation with JWKS, OAuth2 flows     | Basic token passing        |
-| **Middleware System** | Full FastMCP 2.x middleware stack          | Limited or none            |
+| **Middleware System** | Full FastMCP 3.x middleware stack          | Limited or none            |
 | **Scalability**       | One module per API class                   | All operations in one file |
 | **Type Safety**       | Full Pydantic model support                | Basic validation           |
 | **Testing**           | Auto-generated test suites                 | Manual testing only        |
 | **Observability**     | Timing, logging, error handling middleware | Basic logging              |
+| **Tag Discovery**     | Auto-discovers undeclared API tags          | Manual tag mapping         |
 | **Event Store**       | Resumable SSE with event persistence       | Simple SSE                 |
 | **Production Ready**  | ✅ Yes                                     | ⚠️ Often prototypes      |
+
+### Competitive Comparison
+
+How MCP Generator 3.1 stacks up against every other OpenAPI-to-MCP project on GitHub:
+
+| Feature | [**MCP Generator 3.1**](https://github.com/quotentiroler/mcp-generator-3.x) (Py, 13★) | [openapi-mcp-generator](https://github.com/harsha-iiiv/openapi-mcp-generator) (TS, 531★) | [mcp-link](https://github.com/automation-ai-labs/mcp-link) (Go, 602★) | [openapi-mcp-codegen](https://github.com/cnoe-io/openapi-mcp-codegen) (Py, 33★) | [openapi-mcp-generator](https://github.com/abutbul/openapi-mcp-generator) (Py, 28★) |
+|---|---|---|---|---|---|
+| **Approach** | Code generation | Code generation | Runtime proxy | Code generation | Code generation |
+| **OpenAPI 3.0** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **OpenAPI 3.1** | ✅ | ✅ | ✅ | ✅ | ❓ |
+| **Swagger 2.0** | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **Modular sub-servers** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **FastMCP 3.x native** | ✅ | ❌ | N/A | ❌ | ❌ |
+| **Streamable HTTP** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **JWT / JWKS auth** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **OAuth2 flows** | ✅ | env vars only | ❌ | ❌ | ❌ |
+| **Middleware stack** | ✅ (timing, logging, cache, auth) | ❌ | ❌ | ❌ | ❌ |
+| **MCP Resources** | ✅ (GET endpoints) | ❌ | ❌ | ❌ | ✅ |
+| **Event Store** | ✅ (resumable) | ❌ | ❌ | ❌ | ❌ |
+| **Auto-generated tests** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Docker output** | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **Tag auto-discovery** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Server registry** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Pure Python** | ✅ (zero external deps) | ❌ (Node.js) | ❌ (Go binary) | ✅ | ✅ |
+| **Schema validation** | Pydantic | Zod | ❌ | ❌ | ❌ |
+
+> **Note**: [mcpo](https://github.com/open-webui/mcpo) (4,027★) solves the **inverse** problem — exposing MCP servers as OpenAPI endpoints — and is complementary rather than competitive.
+
+---
+
+## ✨ FastMCP 3.1 Features
+
+MCP Generator 3.1 leverages all the latest FastMCP 3.0/3.1 capabilities:
+
+| Feature | Description |
+|---------|-------------|
+| **Tool Tags** | Automatic per-module tag grouping (`@mcp.tool(tags=["pet"])`) |
+| **Tool Timeouts** | Configurable per-tool timeout (default 30s) |
+| **SearchTools** | BM25 text search over tool catalog (opt-in via `fastmcp.json`) |
+| **CodeMode** | Experimental meta-tool transform (opt-in via `fastmcp.json`) |
+| **ResponseLimitingMiddleware** | UTF-8-safe truncation of oversized responses (1MB default) |
+| **PingMiddleware** | HTTP keepalive for long-lived connections |
+| **MultiAuth** | Compose multiple token verifiers (JWT + OAuth2, etc.) |
+| **Component Versioning** | Deprecated OpenAPI endpoints annotated automatically |
+| **Dynamic Visibility** | Per-session component toggling via scopes |
+| **OpenTelemetry** | Tracing with MCP semantic conventions (Console/OTLP export) |
+| **validate_output** | FastMCP output validation support |
+
+All features are configurable via the generated `fastmcp.json`:
+
+```json
+{
+  "features": {
+    "search_tools": { "enabled": false },
+    "code_mode": { "enabled": false },
+    "response_limiting": { "enabled": true, "max_size_bytes": 1048576 },
+    "ping_middleware": { "enabled": true },
+    "opentelemetry": { "enabled": false, "service_name": "my-api-mcp" }
+  }
+}
+```
 
 ---
 
@@ -45,7 +108,6 @@ MCP Generator 2.0 is an advanced code generator that automatically creates FastM
 
 - **Python 3.11+**: Required for modern type hints and features
 - **uv** (recommended) or **pip**: For dependency management
-- **Node.js & npm**: Required for OpenAPI Generator CLI
 - **OpenAPI Specification**: Your API's OpenAPI 3.0.x or 3.1.x spec file (JSON or YAML)
 
 ### Install with uv (Recommended)
@@ -80,16 +142,6 @@ pip install -e .
 generate-mcp --help
 ```
 
-### Install OpenAPI Generator
-
-```bash
-# Using npm (recommended)
-npm install -g @openapitools/openapi-generator-cli
-
-# Verify installation
-npx @openapitools/openapi-generator-cli version
-```
-
 ---
 
 ## 🚀 Quick Start
@@ -110,11 +162,50 @@ uv run generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
 **What happens:**
 
 - ✅ Generates Python API client from OpenAPI spec
+- ✅ Auto-discovers undeclared tags from API paths (tag auto-discovery)
 - ✅ Creates modular MCP server modules
 - ✅ Generates authentication middleware
 - ✅ Creates OAuth2 provider
 - ✅ Writes package files and tests
 - ✅ Outputs to `generated_mcp/` directory
+
+#### Optional Features (Disabled by Default)
+
+By default, the generator creates a minimal, production-ready server. Enable additional features as needed:
+
+```bash
+# Enable persistent storage (for OAuth tokens, session state)
+uv run generate-mcp --enable-storage
+
+# Enable response caching (reduces backend API calls)
+uv run generate-mcp --enable-storage --enable-caching
+
+# Enable MCP resources (expose API data as resources)
+uv run generate-mcp --enable-resources
+
+# Enable all features
+uv run generate-mcp --enable-storage --enable-caching --enable-resources
+```
+
+**Available Features:**
+
+| Flag | Description | When to Use |
+|------|-------------|-------------|
+| `--enable-storage` | Persistent storage backend | OAuth refresh tokens, session data, user preferences |
+| `--enable-caching` | Response caching with TTL | Rate-limited APIs, expensive operations, slow endpoints |
+| `--enable-resources` | MCP resource templates | Expose API data for context/retrieval (GET endpoints) |
+
+> **Note**: `--enable-caching` requires `--enable-storage` as it uses the storage backend for cache persistence.
+
+**Why disabled by default?**
+- Keeps generated code simple and focused
+- Fewer dependencies to manage
+- Easier to understand and customize
+- Most APIs work perfectly without these features
+
+The generator will show which features are available at the end of generation with a copy-paste command to re-generate with features enabled.
+
+💡 **Tip**: Run `uv run generate-mcp --help` to see all available options and examples.
 
 ### 2. Register Your MCP Server
 
@@ -330,7 +421,7 @@ This project installs three CLI commands. Here's a quick cheatsheet.
 
 ### generate-mcp
 
-- Description: Generate a FastMCP 2.x server from an OpenAPI 3.0.x/3.1.x spec.
+- Description: Generate a FastMCP 3.x server from an OpenAPI 3.0.x/3.1.x spec.
 - Options:
   - --file <path>  Path to spec file (default: ./openapi.json)
   - --url <url>    Download spec from URL (overrides --file)
@@ -633,7 +724,7 @@ This project is licensed under the **Apache License 2.0**.
 
 ### Why Apache 2.0?
 
-Apache 2.0 is a permissive license that promotes wide adoption while providing patent protection. It's business-friendly, widely accepted by enterprises, and commonly used for development tools and code generators. This license allows you to use MCP Generator 2.0 in your projects without worrying about copyleft requirements.
+Apache 2.0 is a permissive license that promotes wide adoption while providing patent protection. It's business-friendly, widely accepted by enterprises, and commonly used for development tools and code generators. This license allows you to use MCP Generator 3.1 in your projects without worrying about copyleft requirements.
 
 **Generated Code:** The code generated by this tool is NOT considered a derivative work of the generator itself. You may license your generated MCP servers however you choose.
 
@@ -643,7 +734,7 @@ For the full license text, see [LICENSE](LICENSE) or visit https://www.apache.or
 
 ## 🙏 Acknowledgments
 
-- **FastMCP**: Built on the excellent [FastMCP 2.x](https://github.com/jlowin/fastmcp) framework
+- **FastMCP**: Built on the excellent [FastMCP 3.x](https://github.com/PrefectHQ/fastmcp) framework
 - **OpenAPI Generator**: Uses [OpenAPI Generator](https://openapi-generator.tech/) for client generation
 - **Model Context Protocol**: Implements the [MCP specification](https://modelcontextprotocol.io/)
 - **Anthropic**: For the MCP standard and Claude Desktop integration
@@ -658,6 +749,6 @@ It helps others discover the tool and motivates continued development.
 
 **Made with ❤️**
 
-[Report Bug](https://github.com/quotentiroler/mcp-generator-2.0/issues) · [Request Feature](https://github.com/quotentiroler/mcp-generator-2.0/issues) · [Documentation](https://github.com/quotentiroler/mcp-generator-2.0/wiki)
+[Report Bug](https://github.com/quotentiroler/mcp-generator-3.x/issues) · [Request Feature](https://github.com/quotentiroler/mcp-generator-3.x/issues) · [Documentation](https://quotentiroler.github.io/mcp-generator-3.x/)
 
 </div>

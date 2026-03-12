@@ -5,7 +5,6 @@ Handles command-line interface, logging setup, and orchestrates the generation p
 """
 
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -86,18 +85,27 @@ def main():
 
     # Parse command-line arguments
     parser = argparse.ArgumentParser(
-        description="MCP Generator 2.0 - OpenAPI to FastMCP 2.x Server Generator",
+        description="MCP Generator 3.1 - OpenAPI to FastMCP 3.x Server Generator",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Use local openapi.json (default)
+  # Basic generation (minimal server)
   generate-mcp
 
-  # Specify custom file
+  # With custom OpenAPI file
   generate-mcp --file ./my-api-spec.yaml
 
   # Download from URL
   generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
+
+  # With optional features
+  generate-mcp --enable-storage --enable-caching
+  generate-mcp --enable-resources
+
+Optional Features (disabled by default for simplicity):
+  --enable-storage    Persistent storage for OAuth tokens & state
+  --enable-caching    Response caching (reduces API calls)
+  --enable-resources  MCP resources from GET endpoints
 
 Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         """,
@@ -121,33 +129,31 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         "--enable-storage",
         action="store_true",
         default=False,
-        help="Generate pluggable storage backend for persistent state and OAuth tokens",
+        help="Enable persistent storage backend (for OAuth tokens, session state, user data)",
     )
 
     parser.add_argument(
         "--enable-caching",
         action="store_true",
         default=False,
-        help="Generate response caching middleware (requires --enable-storage)",
+        help="Enable response caching middleware (reduces backend API calls, requires --enable-storage)",
     )
 
     parser.add_argument(
         "--enable-resources",
         action="store_true",
         default=False,
-        help="Generate MCP resource templates from GET endpoints with RFC 6570 URI templates",
+        help="Generate MCP resource templates from GET endpoints (exposes API data as resources)",
     )
 
     args = parser.parse_args()
 
     print("=" * 80)
-    print("MCP Generator 2.0 - OpenAPI to FastMCP 2.x Server Generator")
+    print("MCP Generator 3.1 - OpenAPI to FastMCP 3.x Server Generator")
     print("=" * 80)
 
     # Use current working directory for all operations
     src_dir = Path.cwd()
-    # For scripts and templates, use the package location (mcp_generator/)
-    package_dir = Path(__file__).parent
 
     # Handle URL download if specified
     if args.url:
@@ -211,86 +217,27 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         print("\n🔨 Generating Python API client from OpenAPI specification...")
         print("   This is a one-time step that may take a few moments.")
 
-        # Try to find the script in multiple locations
-        # 1. Development: mcp_generator/scripts/generate_openapi_client.py
-        # 2. Installed: site-packages/mcp_generator/scripts/generate_openapi_client.py
-        script_locations = [
-            package_dir / "scripts" / "generate_openapi_client.py",  # Both dev and installed
-        ]
-
-        script_path = None
-        for location in script_locations:
-            if location.exists():
-                script_path = location
-                break
-
-        if not script_path:
-            print("\n❌ API Client Generator Not Found")
-            print("\nSearched in:")
-            for loc in script_locations:
-                print(f"   - {loc}")
-            print("\n💡 The scripts package may not be installed correctly.")
-            print("   Please reinstall mcp-generator:")
-            print("   pip install --force-reinstall mcp-generator")
-            print("   OR")
-            print("   uv pip install --reinstall mcp-generator")
-            sys.exit(1)
-
-        print(f"   Running: uv run {script_path.name}")
         try:
-            import platform
+            import json as _json
 
-            is_windows = platform.system() == "Windows"
+            with open(openapi_spec, encoding="utf-8") as _f:
+                spec = _json.load(_f)
 
-            cmd = [
-                sys.executable,
-                str(script_path),
-                "--openapi-spec",
-                str(openapi_spec.resolve()),
-                "--output-dir",
-                str(generated_dir.resolve()),
-            ]
+            from .generate_client import generate_client_package
 
-            # Stream output in real time
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                shell=is_windows,
-                cwd=str(src_dir),
-            )
-            try:
-                if process.stdout:
-                    for line in process.stdout:
-                        print(line, end="")
-            except Exception as stream_exc:
-                print(f"\n⚠️ Error streaming output: {stream_exc}")
-            process.wait()
-
-            if process.returncode != 0:
+            generated_dir.mkdir(parents=True, exist_ok=True)
+            ok = generate_client_package(spec, generated_dir)
+            if not ok:
                 print("\n❌ API Client Generation Failed")
-                print(
-                    "\nThe OpenAPI Generator encountered an error while generating the Python client."
-                )
-                print("\n💡 To fix this:")
-                print("   1. Verify your openapi.json is valid:")
+                print("\n💡 Verify your openapi.json is valid:")
                 print("      python -m mcp_generator.scripts.validate_openapi")
-                print("   2. Check that OpenAPI Generator is installed:")
-                print("      npx @openapitools/openapi-generator-cli version")
-                print("   3. Try generating manually:")
-                print("      uv run -m mcp_generator.scripts.generate_openapi_client")
-                print()
                 sys.exit(1)
 
             print("   ✅ API client generated successfully")
         except Exception as e:
-            print(f"\n❌ Error: {e}")
-            print("\n💡 Please generate the API client manually:")
-            print("   uv run -m mcp_generator.scripts.generate_openapi_client")
-            print()
+            print(f"\n❌ Error generating API client: {e}")
+            print("\n💡 Verify your openapi.json is valid:")
+            print("      python -m mcp_generator.scripts.validate_openapi")
             sys.exit(1)
 
     try:
@@ -353,8 +300,7 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         print("\n🔗 Generating main composition server...")
 
         # Load composition configuration from fastmcp.json if it exists
-        composition_strategy = "mount"  # default
-        resource_prefix_format = "path"  # default
+        composition_strategy = "mount"  # default (FastMCP 3.x uses mount with namespace)
         fastmcp_json_path = output_dir / "fastmcp.json"
         if fastmcp_json_path.exists():
             try:
@@ -364,9 +310,6 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                     config = json.load(f)
                     composition_config = config.get("composition", {})
                     composition_strategy = composition_config.get("strategy", "mount")
-                    resource_prefix_format = config.get("composition", {}).get(
-                        "resource_prefix_format", "path"
-                    )
             except Exception as e:
                 print(f"⚠️  Could not load composition config from fastmcp.json: {e}")
 
@@ -375,7 +318,6 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
             api_metadata,
             security_config,
             composition_strategy=composition_strategy,
-            resource_prefix_format=resource_prefix_format,
         )
         # Use API title for filename (sanitized - replace spaces, hyphens, AND dots)
         # Also remove version patterns like "1.0", "v2.0", "3.0" from the name
@@ -480,6 +422,14 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
             print("   • No authentication required (public API)")
             print("   • Created basic test suite with automated test runner")
 
+        # Show enabled optional features
+        if args.enable_storage:
+            print("   • Enabled: Persistent storage backend (storage.py, cache_middleware.py)")
+        if args.enable_caching:
+            print("   • Enabled: Response caching with configurable TTL")
+        if args.enable_resources and total_resources > 0:
+            print("   • Enabled: MCP resources for data access")
+
         print("\n📂 Output Location:")
         print(f"   {output_dir.relative_to(src_dir)}/")
 
@@ -513,6 +463,34 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         print("   • Tests: test/generated/")
         print("   • Test Runner: test/run_tests.py")
         print("   • GitHub: https://github.com/quotentiroler/mcp-generator-2.0")
+
+        # Show optional features that were not enabled
+        disabled_features = []
+        if not args.enable_storage:
+            disabled_features.append(
+                ("--enable-storage", "Persistent OAuth tokens & state across restarts")
+            )
+        if not args.enable_caching:
+            disabled_features.append(
+                ("--enable-caching", "Cache API responses (reduces rate limit impact)")
+            )
+        if not args.enable_resources:
+            disabled_features.append(("--enable-resources", "Expose API data as MCP resources"))
+
+        if disabled_features:
+            print("\n💡 Optional Features (not enabled):")
+            for flag, description in disabled_features:
+                print(f"   {flag:20s} → {description}")
+
+            # Build regeneration command
+            flags_str = " ".join([flag for flag, _ in disabled_features])
+            if args.url:
+                print(f"\n   To enable: generate-mcp --url {args.url} {flags_str}")
+            elif args.file != "./openapi.json":
+                print(f"\n   To enable: generate-mcp --file {args.file} {flags_str}")
+            else:
+                print(f"\n   To enable: generate-mcp {flags_str}")
+
         print()
 
     except ModuleNotFoundError as e:

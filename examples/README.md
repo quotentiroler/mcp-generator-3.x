@@ -1,6 +1,6 @@
 # Examples
 
-This directory contains example OpenAPI specifications and configurations to help you get started with MCP Generator 2.0.
+This directory contains example OpenAPI specifications and configurations to help you get started with MCP Generator 3.1.
 
 ## 📚 Available Examples
 
@@ -106,7 +106,7 @@ Wrap existing APIs to make them accessible to AI agents:
 ## 📖 Additional Resources
 
 - [OpenAPI Specification](https://swagger.io/specification/)
-- [FastMCP Documentation](https://github.com/jlowin/fastmcp)
+- [FastMCP Documentation](https://github.com/PrefectHQ/fastmcp)
 - [MCP Protocol](https://modelcontextprotocol.io/)
 - [Main README](../README.md)
 

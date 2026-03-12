@@ -93,6 +93,7 @@ class ModuleSpec:
     tool_count: int
     code: str
     resource_count: int = 0  # Number of resource templates in this module
+    tag_name: str = ""  # OpenAPI tag name for this module
 
 
 @dataclass
@@ -118,6 +119,10 @@ class ToolSpec:
     parameters: list[ParameterInfo]
     docstring: str
     has_pydantic_params: bool = False
+    tags: list[str] = field(default_factory=list)
+    deprecated: bool = False
+    timeout: int | None = None  # Tool timeout in seconds
+    validate_output: bool | None = None  # FastMCP 3.1 output validation (None = server default)
 
 
 @dataclass

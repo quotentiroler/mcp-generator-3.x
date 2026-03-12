@@ -89,6 +89,35 @@ def load_config(config_path: Path) -> dict:
     return config
 
 
+def _enrich_spec_tags(openapi_spec: Path) -> Path | None:
+    """
+    Load the OpenAPI spec, auto-discover undeclared tags from endpoint
+    definitions, and write an enriched copy if any were found.
+
+    Returns the path to the enriched spec file, or *None* if no enrichment
+    was necessary.
+    """
+    try:
+        with open(openapi_spec, encoding="utf-8") as f:
+            spec = json.load(f)
+    except Exception:
+        return None  # Non-JSON specs (YAML) are handled as-is
+
+    from mcp_generator.introspection import enrich_spec_tags
+
+    discovered = enrich_spec_tags(spec)
+    if not discovered:
+        return None
+
+    print(f"\n🏷️  Auto-discovered {len(discovered)} undeclared tag(s): {', '.join(discovered)}")
+
+    enriched_path = openapi_spec.parent / f"{openapi_spec.stem}_enriched{openapi_spec.suffix}"
+    with open(enriched_path, "w", encoding="utf-8") as f:
+        json.dump(spec, f, indent=2, ensure_ascii=False)
+
+    return enriched_path
+
+
 def generate_client(
     openapi_spec: Path, output_dir: Path, config_path: Path, generator_type: str
 ) -> bool:
@@ -98,8 +127,19 @@ def generate_client(
         print(f"❌ OpenAPI spec not found: {openapi_spec}")
         return False
 
+    # ------------------------------------------------------------------
+    # Auto-discover undeclared tags before invoking the generator.
+    # The openapi-generator-cli generates one API class per top-level
+    # tag.  If an endpoint uses a tag that is not declared in the
+    # top-level ``tags`` array, no class is created for those endpoints.
+    # ------------------------------------------------------------------
+    enriched_spec_path = _enrich_spec_tags(openapi_spec)
+    effective_spec = enriched_spec_path or openapi_spec
+
     print("\n📋 Input:")
     print(f"   OpenAPI spec: {openapi_spec}")
+    if enriched_spec_path:
+        print(f"   Enriched spec: {enriched_spec_path}")
     print(f"   Output dir:   {output_dir}")
     print(f"   Config:       {config_path}")
 
@@ -112,7 +152,7 @@ def generate_client(
 
     cmd = base_cmd + [
         "-i",
-        str(openapi_spec),
+        str(effective_spec),
         "-g",
         "python",
         "-o",
@@ -140,6 +180,14 @@ def generate_client(
     import platform
 
     is_windows = platform.system() == "Windows"
+
+    def _cleanup_enriched() -> None:
+        """Remove the temporary enriched spec file if we created one."""
+        if enriched_spec_path and enriched_spec_path.exists():
+            try:
+                enriched_spec_path.unlink()
+            except OSError:
+                pass
 
     try:
         result = subprocess.run(
@@ -170,6 +218,7 @@ def generate_client(
                     if total_lines > 10:
                         print(f"   ... and {total_lines - 10} more warnings")
                 print("\n✅ Client generated successfully (with warnings)")
+                _cleanup_enriched()
                 return True
 
             # If client wasn't generated, show full error
@@ -199,6 +248,7 @@ def generate_client(
             print("\n3. Try regenerating with verbose output")
             print("=" * 80)
 
+            _cleanup_enriched()
             return False
 
         print("\n✅ Client generated successfully!")
@@ -219,10 +269,12 @@ def generate_client(
                 print(f"   Models: {len(model_files)} files")
                 print(f"   Output: {output_dir}")
 
+        _cleanup_enriched()
         return True
 
     except Exception as e:
         print(f"\n❌ Error during generation: {e}")
+        _cleanup_enriched()
         return False
 
 

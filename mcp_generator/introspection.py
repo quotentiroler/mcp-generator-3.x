@@ -14,6 +14,46 @@ from .models import ApiMetadata, OAuthConfig, OAuthFlowConfig, SecurityConfig
 from .utils import camel_to_snake
 
 
+def enrich_spec_tags(spec: dict[str, Any]) -> list[str]:
+    """
+    Auto-discover tags from endpoint definitions and add undeclared ones to the
+    top-level ``tags`` array.
+
+    The OpenAPI specification allows endpoints to reference tags that are not
+    declared in the top-level ``tags`` list.  Some frameworks (e.g. Elysia)
+    silently drop tags from the top-level list even though they are used on
+    operations.  The openapi-generator-cli and downstream tooling may rely on
+    declared tags to generate API classes, so we must ensure every tag in use is
+    declared.
+
+    Args:
+        spec: Parsed OpenAPI specification (modified **in-place**).
+
+    Returns:
+        List of tag names that were auto-discovered and added.
+    """
+    declared_tags: set[str] = {t["name"] for t in spec.get("tags", [])}
+
+    # Scan all operations for tags that are used but not declared
+    discovered: list[str] = []
+    for _path, path_item in spec.get("paths", {}).items():
+        if not isinstance(path_item, dict):
+            continue
+        for method in ("get", "put", "post", "delete", "patch", "options", "head", "trace"):
+            operation = path_item.get(method)
+            if not isinstance(operation, dict):
+                continue
+            for tag in operation.get("tags", []):
+                if tag not in declared_tags:
+                    spec.setdefault("tags", []).append(
+                        {"name": tag, "description": "Auto-discovered from endpoint definitions"}
+                    )
+                    declared_tags.add(tag)
+                    discovered.append(tag)
+
+    return discovered
+
+
 def _load_openapi_spec(spec_path: Path) -> dict[str, Any] | None:
     """
     Load OpenAPI specification from either JSON or YAML format.
@@ -152,6 +192,16 @@ def get_api_metadata(base_dir: Path | None = None) -> ApiMetadata:
             spec = _load_openapi_spec(openapi_path)
 
             if spec:
+                # Auto-discover tags from endpoint definitions before
+                # reading the top-level tags list.  This ensures tags that
+                # are used on operations but not declared at the top level
+                # are included in the metadata (and downstream generation).
+                discovered = enrich_spec_tags(spec)
+                if discovered:
+                    print(
+                        f"   🏷️  Auto-discovered {len(discovered)} undeclared tag(s): {', '.join(discovered)}"
+                    )
+
                 # Extract info object fields
                 info = spec.get("info", {})
                 if info.get("title"):
@@ -302,6 +352,9 @@ def get_resource_endpoints(base_dir: Path | None = None) -> dict[str, list[dict[
 
     if not spec or "paths" not in spec:
         return {}
+
+    # Enrich tags before grouping resources
+    enrich_spec_tags(spec)
 
     resources_by_tag = {}
 

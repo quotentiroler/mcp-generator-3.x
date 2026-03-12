@@ -1,6 +1,6 @@
 [project]
 name = "mcp-generator"
-version = "2.0.0-rc.1"
+version = "3.1.0"
 description = "OpenAPI to FastAPI MCP Server Generator"
 authors = [
     {name = "Maximilian Nussbaumer", email = "maxivities@gmail.com"}
@@ -43,8 +43,13 @@ dev = [
     "pytest-cov>=6.0.0",
     "ruff>=0.8.4",
     "mypy>=1.13.0",
-    "fastmcp>=2.13.0",  # For testing generated servers that use FastMCP features
+    "fastmcp>=3.0.0",  # For testing generated servers that use FastMCP 3.x features
     "cryptography>=43.0.0",  # For testing storage encryption
+]
+docs = [
+    "mkdocs>=1.6.0,<2.0.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocs-autorefs>=1.0.0",
 ]
 
 [tool.ruff]
@@ -93,6 +98,11 @@ markers = [
     "validated_auth: Tests that require JWT token validation (--validate-tokens flag)",
     "require_backend: Tests that require backend API running on port 8445",
     "slow: Performance and load tests that take longer to run",
+    "fastmcp31: Tests for FastMCP 3.1 specific features (SearchTools, CodeMode, etc.)",
+    "middleware: Tests for middleware generation (ResponseLimiting, Ping, etc.)",
+    "transforms: Tests for transform generation (SearchTools, CodeMode)",
+    "multiauth: Tests for MultiAuth functionality",
+    "otel: Tests for OpenTelemetry integration",
 ]
 # By default, skip validated auth tests unless explicitly requested
 # They will auto-skip if backend/MCP server with validation isn't available

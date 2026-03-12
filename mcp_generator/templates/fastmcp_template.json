@@ -6,8 +6,51 @@
   "middleware": {
     "config": {
       "authentication": {
-        "validate_tokens": "{{validate_tokens}}"
+        "validate_tokens": {{validate_tokens}}
       }
+    }
+  },
+  "features": {
+    "tool_tags": true,
+    "tool_timeouts": {
+      "enabled": true,
+      "default_seconds": 30
+    },
+    "search_tools": {
+      "enabled": false,
+      "description": "Adds BM25 text search over tool names/descriptions for large catalogs"
+    },
+    "code_mode": {
+      "enabled": false,
+      "description": "Experimental: LLM gets meta-tools (search, inspect, execute) instead of full catalog"
+    },
+    "response_limiting": {
+      "enabled": true,
+      "max_size_bytes": 1048576,
+      "description": "UTF-8-safe truncation of oversized tool responses"
+    },
+    "ping_middleware": {
+      "enabled": true,
+      "description": "Keepalive for long-lived HTTP connections"
+    },
+    "multi_auth": {
+      "enabled": false,
+      "providers": [],
+      "description": "Compose multiple token verifiers (e.g., internal JWTs + third-party OAuth)"
+    },
+    "component_versioning": {
+      "enabled": true,
+      "description": "Deprecated OpenAPI endpoints get version annotations"
+    },
+    "validate_output": false,
+    "dynamic_visibility": {
+      "enabled": false,
+      "description": "Per-session component toggling via ctx.enable_components()/disable_components()"
+    },
+    "opentelemetry": {
+      "enabled": false,
+      "service_name": "{{service_name}}",
+      "description": "OpenTelemetry tracing with MCP semantic conventions"
     }
   }
 }

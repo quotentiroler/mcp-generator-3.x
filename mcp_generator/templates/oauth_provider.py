@@ -394,4 +394,56 @@ def create_jwt_verifier(
     except Exception as exc:
         logger.error("Failed to create JWTVerifier: %s", exc)
         return None
+
+
+def create_multi_auth_verifier(
+    providers: list[dict] | None = None,
+) -> Optional["MultiAuth"]:
+    """Create a MultiAuth verifier composing multiple token verification sources.
+
+    This is useful when you need to accept tokens from more than one provider
+    (e.g., internal JWTs alongside a third-party OAuth provider).
+
+    Requires FastMCP >= 3.1.
+
+    Args:
+        providers: List of provider configs, each with 'jwks_uri', 'issuer', 'audience'.
+                   Falls back to the default single JWTVerifier if empty.
+
+    Returns:
+        MultiAuth instance or None if not available/configured.
+    """
+    try:
+        from fastmcp.server.auth import MultiAuth
+    except ImportError:
+        logger.warning("MultiAuth not available (requires fastmcp>=3.1)")
+        return None
+
+    verifiers = []
+
+    # Always include the primary verifier
+    primary = create_jwt_verifier()
+    if primary:
+        verifiers.append(primary)
+
+    # Add additional providers from config
+    if providers:
+        for prov in providers:
+            try:
+                v = JWTVerifier(
+                    jwks_uri=prov.get("jwks_uri", ""),
+                    issuer=prov.get("issuer", ""),
+                    audience=prov.get("audience", ""),
+                    required_scopes=prov.get("required_scopes", []),
+                )
+                verifiers.append(v)
+                logger.info("  MultiAuth: Added provider issuer=%s", prov.get("issuer"))
+            except Exception as exc:
+                logger.warning("  MultiAuth: Failed to add provider: %s", exc)
+
+    if not verifiers:
+        return None
+
+    logger.info("MultiAuth configured with %d token verifiers", len(verifiers))
+    return MultiAuth(verifiers)
 '''

@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for MCP Generator 2.0
+# Multi-stage Dockerfile for MCP Generator 3.x
 # Optimized for production use
 
 # Stage 1: Build stage

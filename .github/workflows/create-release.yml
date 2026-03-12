@@ -123,8 +123,11 @@ jobs:
 
           } catch (error) {
             if (error.status === 422 && error.message.includes('already_exists')) {
-              console.log(`⚠️  Release ${tagName} already exists`);
-              core.setFailed(`Release ${tagName} already exists. Please bump the version in pyproject.toml.`);
+              console.log(`⚠️  Release ${tagName} already exists — skipping (this is expected if version was not bumped)`);
+              core.summary.addHeading(`Release ${tagName} Already Exists ℹ️`);
+              core.summary.addRaw('No action needed. Bump version in pyproject.toml to create a new release.');
+              await core.summary.write();
+              // Don't fail — this is expected behavior when pushing non-release commits
             } else {
               throw error;
             }
