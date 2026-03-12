@@ -62,7 +62,7 @@ jobs:
         uv lock
         echo "✅ uv.lock regenerated"
 
-    - name: Commit changes to develop
+    - name: Commit changes to staging
       if: steps.update.outputs.changed == 'true'
       run: |
         git config user.name "github-actions[bot]"
@@ -74,6 +74,26 @@ jobs:
         git add CHANGELOG.md SECURITY.md pyproject.toml uv.lock
         git commit -m "chore: update version metadata with commit $COMMIT_HASH [skip ci]"
         git push origin staging
+
+    - name: Sync version bump to develop
+      if: steps.update.outputs.changed == 'true'
+      run: |
+        # If version was bumped, push the pyproject.toml change to develop too
+        # This prevents develop -> staging merges from reverting the version bump
+        echo "🔄 Syncing version bump to develop branch..."
+        
+        git fetch origin develop
+        git checkout develop
+        git checkout staging -- pyproject.toml uv.lock
+        
+        if ! git diff --quiet pyproject.toml uv.lock; then
+          git add pyproject.toml uv.lock
+          git commit -m "chore: sync version bump from staging [skip ci]"
+          git push origin develop
+          echo "✅ Version synced to develop"
+        else
+          echo "ℹ️  Develop already has the same version"
+        fi
 
     - name: Summary
       if: always()
