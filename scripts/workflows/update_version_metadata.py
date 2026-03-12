@@ -197,7 +197,7 @@ def create_changelog_section(
         # Find the first ## [ section and insert before it
         match = re.search(r"(## \[)", content)
         if not match:
-            print(f"⚠️  Could not find existing version section in CHANGELOG.md", file=sys.stderr)
+            print("⚠️  Could not find existing version section in CHANGELOG.md", file=sys.stderr)
             return False
 
         # Create new section
