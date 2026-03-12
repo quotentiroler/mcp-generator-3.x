@@ -41,6 +41,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **pyproject.toml** — Added `[telemetry]` optional dependency group
 - **Generated README** — Lists all FastMCP 3.1 features
 
+
+- ✨ Features
+  - No new user-facing features identified
+
+- 🐛 Bug Fixes
+  - fix: add Accept header to bearer token auth test to prevent 406 response
+  - fix: sanitize version strings to be PEP 440 compliant
+  - fix: handle concurrent changelog updates with pull-rebase
+  - debug: add path debugging and -rs flag to show skip reasons
+  - debug: add import error details to oauth test skip reason
+  - fix: prevent sys.exit during pytest collection in oauth tests
+
+- 🔧 Chores & Improvements
+  - chore: update version metadata with commit 6094e01
+  - ci: regenerate uv.lock when version is bumped in pyproject.toml
+  - chore: update version metadata with commit c26698a
+  - update: various internal updates and maintenance lines (aggregate)
+  - chore: update version metadata with commit f09e716
+  - update: internal updates and maintenance
+
+- 📚 Documentation
+  - docs: update CHANGELOG.md for PR #44
+  - docs: update CHANGELOG.md for PR #42
+
+- ⚠️ Breaking Changes
+  - None detected
+
+- 🔧 CI/CD
+  - Merge-related and staging PRs (omitted per guidelines)
+  - Updates related to versioning and test infrastructure improvements
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/45
+
+
 ## [2.0.0-rc.1+6094e01] - 2025-11-05
 
 - ✨ Features: Storage functionality (merged dev/storage changes)

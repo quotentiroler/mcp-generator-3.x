@@ -177,6 +177,60 @@ def get_version_from_pyproject(pyproject_path: Path) -> str:
         sys.exit(1)
 
 
+def create_changelog_section(
+    changelog_path: Path,
+    version: str,
+    date_str: str,
+    dry_run: bool = False,
+) -> bool:
+    """Create a new section in CHANGELOG.md for the bumped version."""
+    try:
+        with open(changelog_path, encoding="utf-8") as f:
+            content = f.read()
+
+        # Check if section already exists
+        pattern = rf"## \[{re.escape(version)}(?:\+[a-f0-9]+)?\]"
+        if re.search(pattern, content):
+            print(f"ℹ️  Changelog section for {version} already exists")
+            return True
+
+        # Find the first ## [ section and insert before it
+        match = re.search(r"(## \[)", content)
+        if not match:
+            print(f"⚠️  Could not find existing version section in CHANGELOG.md", file=sys.stderr)
+            return False
+
+        # Create new section
+        new_section = f"""## [{version}] - {date_str}
+
+### Changed
+
+- Dependencies updated
+
+"""
+
+        insert_pos = match.start()
+        new_content = content[:insert_pos] + new_section + content[insert_pos:]
+
+        if dry_run:
+            print("🔍 DRY RUN - Would create new CHANGELOG.md section:")
+            print(f"   ## [{version}] - {date_str}")
+            return True
+
+        with open(changelog_path, "w", encoding="utf-8") as f:
+            f.write(new_content)
+
+        print(f"✅ Created CHANGELOG.md section: [{version}] - {date_str}")
+        return True
+
+    except FileNotFoundError:
+        print(f"❌ File not found: {changelog_path}", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"❌ Error creating CHANGELOG.md section: {e}", file=sys.stderr)
+        return False
+
+
 def update_changelog(
     changelog_path: Path,
     version: str,
@@ -409,6 +463,10 @@ Examples:
     # Update files
     changelog_path = root_dir / "CHANGELOG.md"
     security_path = root_dir / "SECURITY.md"
+
+    # Create new changelog section if version was bumped
+    if version_was_bumped:
+        create_changelog_section(changelog_path, version, date_str, args.dry_run)
 
     changelog_success = update_changelog(
         changelog_path, version, commit_hash, date_str, args.dry_run
