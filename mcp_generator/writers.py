@@ -495,6 +495,7 @@ def write_test_files(
     multi_auth_test_code: str | None = None,
     server_integration_test_code: str | None = None,
     tool_schema_test_code: str | None = None,
+    behavioral_test_code: str | None = None,
 ) -> None:
     """
     Write generated test files to the filesystem.
@@ -513,6 +514,7 @@ def write_test_files(
         multi_auth_test_code: Generated multi-auth tests (FastMCP 3.1 features, None if no auth)
         server_integration_test_code: Generated in-process integration tests
         tool_schema_test_code: Generated tool schema validation tests
+        behavioral_test_code: Generated behavioural edge-case tests (expected to fail initially)
     """
     test_dir.mkdir(parents=True, exist_ok=True)
 
@@ -598,6 +600,13 @@ def write_test_files(
         with open(schema_file, "w", encoding="utf-8") as f:
             f.write(tool_schema_test_code)
         print("   ✅ test_tool_schemas_generated.py")
+
+    # Write behavioral edge-case tests
+    if behavioral_test_code:
+        behavioral_file = test_dir / "test_behavioral_generated.py"
+        with open(behavioral_file, "w", encoding="utf-8") as f:
+            f.write(behavioral_test_code)
+        print("   ✅ test_behavioral_generated.py")
 
 
 def write_test_runner(test_runner_code: str, output_file: Path) -> None:

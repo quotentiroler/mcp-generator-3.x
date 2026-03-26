@@ -342,3 +342,104 @@ class TestToolSchemaTemplate:
 
     def test_has_no_duplicate_check(self, schema_code: str) -> None:
         assert "test_no_duplicate_tool_names" in schema_code
+
+
+# ---------------------------------------------------------------------------
+# Behavioral edge-case test template
+# ---------------------------------------------------------------------------
+
+
+class TestBehavioralTemplate:
+    """Test that generate_behavioral_tests produces valid test code."""
+
+    @pytest.fixture
+    def behavioral_code(self) -> str:
+        from mcp_generator.models import ApiMetadata, ModuleSpec
+        from mcp_generator.templates.test.test_behavioral import (
+            generate_behavioral_tests,
+        )
+
+        meta = ApiMetadata(
+            title="Test API",
+            version="1.0.0",
+            servers=[{"url": "http://localhost:3001"}],
+        )
+        sc = SecurityConfig()
+        modules = {
+            "pet": ModuleSpec(
+                filename="pet_server.py",
+                api_var_name="pet_api",
+                api_class_name="PetApi",
+                module_name="pet",
+                tool_count=3,
+                code="",
+            ),
+            "store": ModuleSpec(
+                filename="store_server.py",
+                api_var_name="store_api",
+                api_class_name="StoreApi",
+                module_name="store",
+                tool_count=2,
+                code="",
+            ),
+        }
+        return generate_behavioral_tests(modules, meta, sc)
+
+    def test_generates_code(self, behavioral_code: str) -> None:
+        assert isinstance(behavioral_code, str)
+        assert len(behavioral_code) > 500
+
+    def test_has_mock_context(self, behavioral_code: str) -> None:
+        assert "class MockContext" in behavioral_code
+        assert "async def get_state" in behavioral_code
+
+    def test_imports_fastmcp(self, behavioral_code: str) -> None:
+        assert "from fastmcp import FastMCP, Client" in behavioral_code
+
+    def test_imports_server_modules(self, behavioral_code: str) -> None:
+        assert "from servers.pet_server import mcp as pet_mcp" in behavioral_code
+        assert "from servers.store_server import mcp as store_mcp" in behavioral_code
+
+    def test_has_state_contract_tests(self, behavioral_code: str) -> None:
+        assert "class TestStateContract" in behavioral_code
+        assert "test_missing_api_client_raises" in behavioral_code
+        assert "test_wrong_type_api_client" in behavioral_code
+
+    def test_has_parameter_validation_tests(self, behavioral_code: str) -> None:
+        assert "class TestParameterValidation" in behavioral_code
+        assert "test_malformed_json_gives_clear_error" in behavioral_code
+        assert "test_empty_json_object_gives_clear_error" in behavioral_code
+
+    def test_has_response_normalisation_tests(self, behavioral_code: str) -> None:
+        assert "class TestResponseNormalisation" in behavioral_code
+        assert "test_bytes_response_normalisation" in behavioral_code
+        assert "test_generator_response_normalisation" in behavioral_code
+        assert "test_to_dict_raises_exception" in behavioral_code
+
+    def test_has_error_message_quality_tests(self, behavioral_code: str) -> None:
+        assert "class TestErrorMessageQuality" in behavioral_code
+        assert "test_connection_error_mentions_connectivity" in behavioral_code
+        assert "test_timeout_error_mentions_timeout" in behavioral_code
+        assert "test_error_log_includes_tool_name" in behavioral_code
+
+    def test_has_json_serialisability_tests(self, behavioral_code: str) -> None:
+        assert "class TestJsonSerialisability" in behavioral_code
+        assert "test_successful_response_is_json_serialisable" in behavioral_code
+
+    def test_has_async_safety_tests(self, behavioral_code: str) -> None:
+        assert "class TestAsyncSafety" in behavioral_code
+        assert "test_coroutine_response_not_silently_wrapped" in behavioral_code
+
+    def test_has_tool_discovery(self, behavioral_code: str) -> None:
+        """Template should discover tools at runtime, not hardcode names."""
+        assert "_discover_tools" in behavioral_code
+        assert "ALL_TOOLS" in behavioral_code
+        assert "PYDANTIC_TOOLS" in behavioral_code
+
+    def test_has_expected_to_fail_markers(self, behavioral_code: str) -> None:
+        """Template should document which tests are expected to fail."""
+        assert "Expected to fail initially" in behavioral_code
+
+    def test_has_actionable_assertion_messages(self, behavioral_code: str) -> None:
+        """Assertion messages should include 'Fix:' instructions."""
+        assert "Fix:" in behavioral_code
