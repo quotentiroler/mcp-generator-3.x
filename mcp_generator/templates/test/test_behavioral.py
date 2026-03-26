@@ -49,9 +49,7 @@ def generate_behavioral_tests(
             f"from servers.{server_module} import mcp as {mod_name}_mcp, "
             f"_format_api_error, _get_api_instances"
         )
-        module_instances.append(
-            f'    ("{mod_name}", {mod_name}_mcp),'
-        )
+        module_instances.append(f'    ("{mod_name}", {mod_name}_mcp),')
 
     imports_block = "\n".join(module_imports)
     instances_block = "\n".join(module_instances)
@@ -93,8 +91,9 @@ from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 import pytest
 
 # ── path setup ──────────────────────────────────────────────────────────
-_src_path = Path(__file__).parent.parent
-_generated_path = _src_path.parent / "generated_openapi"
+_project_root = Path(__file__).resolve().parent.parent.parent
+_src_path = _project_root / "generated_mcp"
+_generated_path = _project_root / "generated_openapi"
 for _p in [str(_src_path), str(_generated_path)]:
     if _p not in sys.path:
         sys.path.insert(0, _p)
@@ -137,7 +136,7 @@ class MockContext:
     async def warning(self, msg: str) -> None:
         self.logs.append(("WARNING", msg))
 
-    async def report_progress(self, current: float, total: float) -> None:
+    async def report_progress(self, current: float, total: float, message: str = "") -> None:
         pass
 
 

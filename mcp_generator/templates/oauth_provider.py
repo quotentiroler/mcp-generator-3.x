@@ -173,6 +173,8 @@ class OAuthTokenManager:
         """
         Introspect token using RFC 7662 endpoint.
 
+        Includes SSRF protection to prevent introspection against private/internal endpoints.
+
         Args:
             token: Access token to introspect
             introspection_endpoint: OAuth server introspection URL
@@ -183,6 +185,18 @@ class OAuthTokenManager:
             Introspection response dict or None on failure
         """
         try:
+            # SSRF protection: validate introspection endpoint before calling
+            try:
+                from fastmcp.server.auth.ssrf import validate_url as _validate_ssrf
+                import asyncio
+                await _validate_ssrf(introspection_endpoint)
+                logger.debug(f"SSRF validation passed for introspection endpoint: {{introspection_endpoint}}")
+            except ImportError:
+                logger.debug("SSRF protection not available, proceeding without URL validation")
+            except Exception as ssrf_err:
+                logger.error(f"SSRF protection blocked introspection endpoint {{introspection_endpoint}}: {{ssrf_err}}")
+                return None
+
             import httpx
 
             response = await httpx.AsyncClient().post(
@@ -498,5 +512,88 @@ def create_propelauth_provider(
         return provider
     except Exception as exc:
         logger.error("Failed to create PropelAuth provider: %s", exc)
+        return None
+
+
+def create_oauth_proxy(
+    config: dict | None = None,
+) -> Optional[Any]:
+    """Create an OAuthProxy for bridging non-DCR IdPs to MCP-compatible auth.
+
+    OAuthProxy presents a DCR-compliant interface while proxying to enterprise
+    IdPs (Auth0, Okta, Azure AD, Google, GitHub) that don't support Dynamic
+    Client Registration. This enables production HTTP deployments with real SSO.
+
+    Requires FastMCP >= 3.1 and a pre-registered OAuth app with the upstream IdP.
+
+    Args:
+        config: OAuth Proxy configuration dict with keys:
+            - upstream_authorization_endpoint: IdP authorization URL
+            - upstream_token_endpoint: IdP token URL
+            - upstream_client_id: Pre-registered app client ID
+            - upstream_client_secret: Pre-registered app client secret
+            - upstream_revocation_endpoint: (optional) Token revocation URL
+            - base_url: Public URL of this MCP server
+            - redirect_path: (optional) Callback path (default: /oauth/callback)
+            - valid_scopes: (optional) List of allowed scopes
+            - forward_pkce: (optional) Forward PKCE to upstream (default: true)
+
+    Returns:
+        OAuthProxy instance or None if not available/configured.
+    """
+    try:
+        from fastmcp.server.auth.oauth_proxy import OAuthProxy
+    except ImportError:
+        logger.warning("OAuthProxy not available (requires fastmcp>=3.1)")
+        return None
+
+    config = config or {{}}
+    auth_endpoint = config.get("upstream_authorization_endpoint")
+    token_endpoint = config.get("upstream_token_endpoint")
+    client_id = config.get("upstream_client_id")
+    client_secret = config.get("upstream_client_secret")
+    base_url = config.get("base_url", BACKEND_API_URL)
+
+    if not all([auth_endpoint, token_endpoint, client_id, client_secret]):
+        logger.error(
+            "OAuthProxy requires upstream_authorization_endpoint, upstream_token_endpoint, "
+            "upstream_client_id, and upstream_client_secret"
+        )
+        return None
+
+    try:
+        # Create a JWTVerifier for token validation (reuse existing config)
+        token_verifier = create_jwt_verifier()
+        if not token_verifier:
+            logger.error("OAuthProxy requires a working JWTVerifier for token validation")
+            return None
+
+        proxy_kwargs = {{
+            "upstream_authorization_endpoint": auth_endpoint,
+            "upstream_token_endpoint": token_endpoint,
+            "upstream_client_id": client_id,
+            "upstream_client_secret": client_secret,
+            "token_verifier": token_verifier,
+            "base_url": base_url,
+        }}
+
+        # Optional parameters
+        if config.get("upstream_revocation_endpoint"):
+            proxy_kwargs["upstream_revocation_endpoint"] = config["upstream_revocation_endpoint"]
+        if config.get("redirect_path"):
+            proxy_kwargs["redirect_path"] = config["redirect_path"]
+        if config.get("valid_scopes"):
+            proxy_kwargs["valid_scopes"] = config["valid_scopes"]
+        if "forward_pkce" in config:
+            proxy_kwargs["forward_pkce"] = config["forward_pkce"]
+
+        proxy = OAuthProxy(**proxy_kwargs)
+        logger.info("OAuthProxy configured: auth=%s, token=%s", auth_endpoint, token_endpoint)
+        logger.info("  Base URL: %s", base_url)
+        logger.info("  Client ID: %s", client_id[:8] + "..." if len(client_id) > 8 else client_id)
+        return proxy
+
+    except Exception as exc:
+        logger.error("Failed to create OAuthProxy: %s", exc)
         return None
 '''

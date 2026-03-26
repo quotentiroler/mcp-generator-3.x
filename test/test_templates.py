@@ -199,6 +199,71 @@ class TestOAuthProviderPropelAuth:
 
 
 # ---------------------------------------------------------------------------
+# OAuth provider template — OAuthProxy (FastMCP 3.1)
+# ---------------------------------------------------------------------------
+
+
+class TestOAuthProviderOAuthProxy:
+    def test_oauth_proxy_function_present(self, oauth_code: str) -> None:
+        """create_oauth_proxy function should exist."""
+        assert "def create_oauth_proxy" in oauth_code
+
+    def test_oauth_proxy_imports_fastmcp(self, oauth_code: str) -> None:
+        """Should import OAuthProxy from fastmcp."""
+        assert "OAuthProxy" in oauth_code
+
+    def test_oauth_proxy_config_keys(self, oauth_code: str) -> None:
+        """Should read upstream endpoint config keys."""
+        assert 'config.get("upstream_authorization_endpoint")' in oauth_code
+        assert 'config.get("upstream_token_endpoint")' in oauth_code
+        assert 'config.get("upstream_client_id")' in oauth_code
+        assert 'config.get("upstream_client_secret")' in oauth_code
+
+    def test_oauth_proxy_validates_required_fields(self, oauth_code: str) -> None:
+        """Should validate that upstream endpoints are present."""
+        assert "not all([auth_endpoint, token_endpoint, client_id, client_secret])" in oauth_code
+
+    def test_oauth_proxy_returns_none_on_import_error(self, oauth_code: str) -> None:
+        """Should handle ImportError gracefully."""
+        # Count ImportError catches — should have one in OAuth Proxy
+        assert oauth_code.count("except ImportError") >= 3  # MultiAuth + PropelAuth + OAuthProxy
+
+    def test_oauth_proxy_uses_jwt_verifier(self, oauth_code: str) -> None:
+        """Should use create_jwt_verifier for token validation."""
+        assert "create_jwt_verifier()" in oauth_code
+
+    def test_oauth_proxy_supports_optional_params(self, oauth_code: str) -> None:
+        """Should handle optional config parameters."""
+        assert "upstream_revocation_endpoint" in oauth_code
+        assert "redirect_path" in oauth_code
+        assert "valid_scopes" in oauth_code
+        assert "forward_pkce" in oauth_code
+
+
+# ---------------------------------------------------------------------------
+# Authentication template — SSRF protection (FastMCP 3.1)
+# ---------------------------------------------------------------------------
+
+
+class TestAuthenticationSSRFProtection:
+    def test_ssrf_import_present(self, auth_code: str) -> None:
+        """Should import SSRF-safe fetch utilities."""
+        assert "ssrf_safe_fetch" in auth_code or "validate_url" in auth_code
+
+    def test_ssrf_protection_available_flag(self, auth_code: str) -> None:
+        """Should set SSRF_PROTECTION_AVAILABLE flag."""
+        assert "SSRF_PROTECTION_AVAILABLE" in auth_code
+
+    def test_ssrf_validation_on_jwks(self, auth_code: str) -> None:
+        """Should validate JWKS URI against SSRF before using it."""
+        assert "validate_url" in auth_code
+
+    def test_ssrf_graceful_fallback(self, auth_code: str) -> None:
+        """Should handle missing SSRF module gracefully."""
+        assert "SSRF_PROTECTION_AVAILABLE = False" in auth_code
+
+
+# ---------------------------------------------------------------------------
 # Server integration test template (FastMCP 3.1)
 # ---------------------------------------------------------------------------
 

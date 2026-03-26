@@ -17,6 +17,7 @@ env/
 htmlcov/
 .mypy_cache/
 .ruff_cache/
+test/generated/
 
 # Generated code (examples/output from running the generator)
 **/generated_openapi

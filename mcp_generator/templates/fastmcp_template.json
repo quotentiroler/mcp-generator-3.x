@@ -41,6 +41,13 @@
       "enabled": true,
       "description": "Keepalive for long-lived HTTP connections"
     },
+    "rate_limiting": {
+      "enabled": false,
+      "max_requests_per_second": 10.0,
+      "burst_capacity": 20,
+      "global_limit": false,
+      "description": "Token-bucket rate limiting to prevent server abuse (per-client or global)"
+    },
     "multi_auth": {
       "enabled": false,
       "providers": [],
@@ -54,6 +61,19 @@
       "base_url": null,
       "required_scopes": null,
       "description": "PropelAuth enterprise authentication provider (FastMCP 3.1)"
+    },
+    "oauth_proxy": {
+      "enabled": false,
+      "upstream_authorization_endpoint": null,
+      "upstream_token_endpoint": null,
+      "upstream_client_id": null,
+      "upstream_client_secret": null,
+      "upstream_revocation_endpoint": null,
+      "base_url": null,
+      "redirect_path": "/oauth/callback",
+      "valid_scopes": null,
+      "forward_pkce": true,
+      "description": "OAuthProxy bridges non-DCR IdPs (Auth0, Okta, Azure AD, Google) to MCP-compatible auth. Requires a pre-registered OAuth app with the upstream IdP."
     },
     "component_versioning": {
       "enabled": true,

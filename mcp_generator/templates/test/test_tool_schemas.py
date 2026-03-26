@@ -34,12 +34,8 @@ def generate_tool_schema_tests(
     module_entries = []
     for mod_name, spec in sorted(modules.items()):
         server_module = spec.filename.replace(".py", "")
-        module_imports.append(
-            f"from servers.{server_module} import mcp as {mod_name}_mcp"
-        )
-        module_entries.append(
-            f'    ("{mod_name}", {mod_name}_mcp, {spec.tool_count}),'
-        )
+        module_imports.append(f"from servers.{server_module} import mcp as {mod_name}_mcp")
+        module_entries.append(f'    ("{mod_name}", {mod_name}_mcp, {spec.tool_count}),')
 
     imports_block = "\n".join(module_imports)
     entries_block = "\n".join(module_entries)
@@ -69,8 +65,9 @@ from typing import Any
 import pytest
 
 # Add source paths
-_src_path = Path(__file__).parent.parent
-_generated_path = _src_path.parent / "generated_openapi"
+_project_root = Path(__file__).resolve().parent.parent.parent
+_src_path = _project_root / "generated_mcp"
+_generated_path = _project_root / "generated_openapi"
 for _p in [str(_src_path), str(_generated_path)]:
     if _p not in sys.path:
         sys.path.insert(0, _p)
@@ -94,8 +91,8 @@ MODULES = [
 def openapi_spec():
     \"\"\"Load the source OpenAPI specification.\"\"\"
     for search_dir in [
-        Path(__file__).parent.parent.parent,   # project root
-        Path(__file__).parent.parent,           # generated_mcp/
+        _project_root,   # project root
+        _src_path,       # generated_mcp/
         Path.cwd(),
     ]:
         for name in ["openapi.json", "openapi.yaml", "openapi.yml"]:

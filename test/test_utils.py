@@ -6,6 +6,7 @@ from mcp_generator.utils import (
     camel_to_snake,
     normalize_version,
     sanitize_name,
+    sanitize_server_name,
 )
 
 # ---------------------------------------------------------------------------
@@ -87,3 +88,24 @@ class TestNormalizeVersion:
 
     def test_no_match_passthrough(self) -> None:
         assert normalize_version("latest") == "latest"
+
+
+# ---------------------------------------------------------------------------
+# sanitize_server_name
+# ---------------------------------------------------------------------------
+
+
+class TestSanitizeServerName:
+    @pytest.mark.parametrize(
+        "input_,expected",
+        [
+            ("Swagger Petstore - OpenAPI 3.0", "swagger_petstore_openapi"),
+            ("My API v2.1.0", "my_api"),
+            ("Simple Service", "simple_service"),
+            ("API with dots.in.name", "api_with_dots_in_name"),
+            ("  Leading Spaces 1.0  ", "leading_spaces"),
+            ("Multi---Hyphens", "multi_hyphens"),
+        ],
+    )
+    def test_sanitize_server_name(self, input_: str, expected: str) -> None:
+        assert sanitize_server_name(input_) == expected

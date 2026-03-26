@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .models import ApiMetadata, ModuleSpec, SecurityConfig
 from .templates.test.test_auth_flows import generate_auth_flow_tests as _generate_auth_flows
+from .templates.test.test_behavioral import generate_behavioral_tests as _generate_behavioral
 from .templates.test.test_cache import generate_cache_tests as _generate_cache
 from .templates.test.test_e2e_http_basic import generate_http_basic_tests as _generate_http_basic
 from .templates.test.test_e2e_openapi_features import (
@@ -27,7 +28,6 @@ from .templates.test.test_server_integration import (
 from .templates.test.test_tool_schemas import generate_tool_schema_tests as _generate_tool_schemas
 from .templates.test.test_tools import generate_tool_tests as _generate_tools
 from .templates.test.test_transforms import generate_transform_tests as _generate_transforms
-from .templates.test.test_behavioral import generate_behavioral_tests as _generate_behavioral
 
 
 def _load_openapi_spec() -> dict:

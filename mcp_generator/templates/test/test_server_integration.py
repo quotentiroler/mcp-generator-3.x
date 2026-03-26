@@ -8,6 +8,7 @@ response normalization with mocked API clients.
 """
 
 from ...models import ApiMetadata, ModuleSpec, SecurityConfig
+from ...utils import camel_to_snake, sanitize_server_name
 
 
 def generate_server_integration_tests(
@@ -44,23 +45,15 @@ def generate_server_integration_tests(
         )
 
         # Tool count check for this module
-        module_tool_checks.append(
-            f'    ("{mod_name}", {mod_name}_mcp, {spec.tool_count}),'
-        )
+        module_tool_checks.append(f'    ("{mod_name}", {mod_name}_mcp, {spec.tool_count}),')
 
-        # Tag check — tools in this module should have the tag
-        module_metadata_checks.append(
-            f'    ("{mod_name}", {mod_name}_mcp, "{mod_name}"),'
-        )
+        # Tag check — tools in this module should have the tag (snake_case lowercase)
+        expected_tag = camel_to_snake(mod_name)
+        module_metadata_checks.append(f'    ("{mod_name}", {mod_name}_mcp, "{expected_tag}"),')
 
     imports_block = "\n".join(module_imports)
     tool_check_block = "\n".join(module_tool_checks)
     metadata_check_block = "\n".join(module_metadata_checks)
-
-    # First tool name for call_tool test
-    first_mod_name = sorted(modules.keys())[0]
-    first_spec = modules[first_mod_name]
-    first_server_module = first_spec.filename.replace(".py", "")
 
     return f'''"""
 Generated Server Integration Tests for {api_metadata.title}
@@ -91,8 +84,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 # Add the generated server source to the path
-_src_path = Path(__file__).parent.parent
-_generated_path = _src_path.parent / "generated_openapi"
+_project_root = Path(__file__).resolve().parent.parent.parent
+_src_path = _project_root / "generated_mcp"
+_generated_path = _project_root / "generated_openapi"
 for _p in [str(_src_path), str(_generated_path)]:
     if _p not in sys.path:
         sys.path.insert(0, _p)
@@ -103,7 +97,7 @@ from fastmcp import FastMCP, Client
 {imports_block}
 
 # Import the main composition server
-from {api_metadata.title.lower().replace(" ", "_").replace("-", "_")}_mcp_generated import (
+from {sanitize_server_name(api_metadata.title)}_mcp_generated import (
     app as main_app,
     _compose_mcp_servers,
     create_server,
@@ -483,38 +477,38 @@ class TestConfigLoading:
 
     def test_fastmcp_json_exists(self):
         \"\"\"fastmcp.json must exist in the server directory.\"\"\"
-        config_path = Path(__file__).parent.parent / "fastmcp.json"
+        config_path = _src_path / "fastmcp.json"
         assert config_path.exists(), f"fastmcp.json not found at {{config_path}}"
 
     def test_fastmcp_json_valid(self):
         \"\"\"fastmcp.json must be valid JSON.\"\"\"
-        config_path = Path(__file__).parent.parent / "fastmcp.json"
+        config_path = _src_path / "fastmcp.json"
         with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
         assert isinstance(config, dict)
 
     def test_features_section_present(self):
         \"\"\"features section must exist in fastmcp.json.\"\"\"
-        config_path = Path(__file__).parent.parent / "fastmcp.json"
+        config_path = _src_path / "fastmcp.json"
         with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
         assert "features" in config
 
     def test_composition_strategy(self):
         \"\"\"composition strategy should be 'mount'.\"\"\"
-        config_path = Path(__file__).parent.parent / "fastmcp.json"
+        config_path = _src_path / "fastmcp.json"
         with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
         assert config.get("composition", {{}}).get("strategy") == "mount"
 
     def test_pyproject_toml_exists(self):
         \"\"\"pyproject.toml must exist.\"\"\"
-        pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
+        pyproject_path = _src_path / "pyproject.toml"
         assert pyproject_path.exists()
 
     def test_pyproject_requires_fastmcp_3(self):
         \"\"\"pyproject.toml must depend on fastmcp>=3.1.\"\"\"
-        pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
+        pyproject_path = _src_path / "pyproject.toml"
         content = pyproject_path.read_text(encoding="utf-8")
         assert "fastmcp>=" in content
         assert "fastmcp>=3" in content

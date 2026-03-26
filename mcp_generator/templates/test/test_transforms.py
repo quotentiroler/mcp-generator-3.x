@@ -23,8 +23,6 @@ def generate_transform_tests(
     Returns:
         str: Test file content for transform validation
     """
-    total_tools = sum(spec.tool_count for spec in modules.values())
-
     return f'''"""
 Generated Transform Tests for {api_metadata.title}
 

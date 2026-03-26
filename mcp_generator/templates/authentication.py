@@ -59,6 +59,14 @@ from starlette.requests import HTTPConnection
 from mcp import McpError
 from mcp.types import ErrorData
 
+# SSRF-safe fetch for JWKS/metadata endpoints
+try:
+    from fastmcp.server.auth.ssrf import ssrf_safe_fetch, validate_url, SSRFError
+    SSRF_PROTECTION_AVAILABLE = True
+except ImportError:
+    SSRF_PROTECTION_AVAILABLE = False
+    SSRFError = Exception  # type: ignore
+
 # Add the parent directory (example root) and generated_openapi to Python path
 mcp_server_path = Path(__file__).parent.parent.parent
 generated_openapi_path = mcp_server_path / "generated_openapi"
@@ -150,13 +158,30 @@ class ApiClientContextMiddleware(Middleware):
 
         if validate_tokens and self._jwt_verifier is None:
             try:
+                _jwks_uri = "{jwks_uri}"
+                # Validate JWKS URI against SSRF before using it
+                if SSRF_PROTECTION_AVAILABLE:
+                    import asyncio
+                    try:
+                        loop = asyncio.get_running_loop()
+                    except RuntimeError:
+                        loop = None
+                    if loop is None:
+                        asyncio.run(validate_url(_jwks_uri))
+                        logger.info("SSRF validation passed for JWKS URI: %s", _jwks_uri)
+                    else:
+                        logger.info("SSRF validation will run at first token verification for: %s", _jwks_uri)
+
                 self._jwt_verifier = JWTVerifier(
-                    jwks_uri="{jwks_uri}",
+                    jwks_uri=_jwks_uri,
                     issuer="{issuer}",
                     audience="{audience}",
                     required_scopes=[{scopes_literal}]
                 )
                 logger.info("Initialized inline JWT verifier for ApiClientContextMiddleware")
+            except SSRFError as ssrf_exc:
+                logger.error("SSRF protection blocked JWKS URI %s: %s", "{jwks_uri}", ssrf_exc)
+                self._jwt_verifier = None
             except Exception as exc:
                 logger.warning("Failed to initialize JWT verifier: %s", exc)
                 self._jwt_verifier = None
