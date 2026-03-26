@@ -8,6 +8,7 @@ response normalization with mocked API clients.
 """
 
 from ...models import ApiMetadata, ModuleSpec, SecurityConfig
+from ...utils import sanitize_server_name
 
 
 def generate_server_integration_tests(
@@ -94,7 +95,7 @@ from fastmcp import FastMCP, Client
 {imports_block}
 
 # Import the main composition server
-from {api_metadata.title.lower().replace(" ", "_").replace("-", "_")}_mcp_generated import (
+from {sanitize_server_name(api_metadata.title)}_mcp_generated import (
     app as main_app,
     _compose_mcp_servers,
     create_server,

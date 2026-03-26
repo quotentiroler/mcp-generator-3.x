@@ -5,6 +5,7 @@ Generates pytest tests for validating MCP tool discovery.
 """
 
 from ...models import ApiMetadata, ModuleSpec, SecurityConfig
+from ...utils import sanitize_server_name
 
 
 def generate_tool_tests(
@@ -172,6 +173,6 @@ if __name__ == "__main__":
         pytest test_tools_generated.py -v
 
     Start the server:
-        cd generated_mcp && python {api_metadata.title.lower().replace(" ", "_")}_mcp_generated.py --transport=http
+        cd generated_mcp && python {sanitize_server_name(api_metadata.title)}_mcp_generated.py --transport=http
     """)
 '''

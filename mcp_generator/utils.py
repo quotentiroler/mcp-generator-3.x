@@ -47,6 +47,23 @@ def normalize_version(version: str) -> str:
     return version
 
 
+def sanitize_server_name(title: str) -> str:
+    """Sanitize an API title into a valid Python module / server name.
+
+    Removes version patterns (e.g. '3.0', 'v2.1.0'), replaces spaces,
+    hyphens, and dots with underscores, collapses consecutive underscores,
+    and strips leading/trailing underscores.
+
+    Examples:
+        "Swagger Petstore - OpenAPI 3.0" -> "swagger_petstore_openapi"
+        "My API v2.1.0" -> "my_api"
+    """
+    clean = re.sub(r"\s+v?\d+\.\d+(\.\d+)?", "", title, flags=re.IGNORECASE)
+    name = clean.lower().replace(" ", "_").replace("-", "_").replace(".", "_")
+    name = re.sub(r"_+", "_", name).strip("_")
+    return name
+
+
 def sanitize_name(name: str) -> str:
     """
     Convert API method name to MCP tool name.

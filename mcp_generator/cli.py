@@ -324,14 +324,9 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
             security_config,
             composition_strategy=composition_strategy,
         )
-        # Use API title for filename (sanitized - replace spaces, hyphens, AND dots)
-        # Also remove version patterns like "1.0", "v2.0", "3.0" from the name
-        import re
+        from .utils import sanitize_server_name
 
-        clean_title = re.sub(r"\s+v?\d+\.\d+(\.\d+)?", "", api_metadata.title, flags=re.IGNORECASE)
-        server_name = clean_title.lower().replace(" ", "_").replace("-", "_").replace(".", "_")
-        # Remove multiple consecutive underscores
-        server_name = re.sub(r"_+", "_", server_name).strip("_")
+        server_name = sanitize_server_name(api_metadata.title)
         main_output_file = output_dir / f"{server_name}_mcp_generated.py"
         write_main_server(main_server_code, main_output_file)
 

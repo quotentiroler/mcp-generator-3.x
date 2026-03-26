@@ -112,11 +112,9 @@ def render_fastmcp_template(api_metadata, security_config, modules, total_tools,
         template = f.read()
 
     # Build service name from API title
-    import re
+    from .utils import sanitize_server_name
 
-    clean_title = re.sub(r"\s+v?\d+\.\d+(\.\d+)?", "", api_metadata.title, flags=re.IGNORECASE)
-    service_name = clean_title.lower().replace(" ", "-").replace("_", "-")
-    service_name = re.sub(r"-+", "-", service_name).strip("-")
+    service_name = sanitize_server_name(api_metadata.title).replace("_", "-")
 
     # Simple replacements for demonstration; expand as needed
     return (

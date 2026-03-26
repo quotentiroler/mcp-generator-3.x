@@ -49,14 +49,9 @@ def test_no_resources_generated():
         if module_spec.resource_count > 0:
             resources_by_module[module_name] = module_spec.resource_count
 
-    # Compute server name from API title (same logic as cli.py)
-    import re
+    from ...utils import sanitize_server_name
 
-    # Remove version patterns like "1.0", "v2.0", "3.0" from the name
-    clean_title = re.sub(r"\s+v?\d+\.\d+(\.\d+)?", "", api_metadata.title, flags=re.IGNORECASE)
-    server_name = clean_title.lower().replace(" ", "_").replace("-", "_").replace(".", "_")
-    # Remove multiple consecutive underscores
-    server_name = re.sub(r"_+", "_", server_name).strip("_")
+    server_name = sanitize_server_name(api_metadata.title)
 
     # Build the base test code
     code = f'''"""

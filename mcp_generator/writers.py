@@ -108,7 +108,7 @@ def write_package_files(
 ) -> None:
     """Write package metadata files (README, pyproject.toml, __init__.py)."""
 
-    import re
+    from .utils import sanitize_server_name
 
     # Generate README.md
     oauth_flows = (
@@ -116,11 +116,7 @@ def write_package_files(
         if security_config.oauth_config
         else "None"
     )
-    # Use same cleaning logic as in cli.py - remove version patterns from title
-    clean_title = re.sub(r"\s+v?\d+\.\d+(\.\d+)?", "", api_metadata.title, flags=re.IGNORECASE)
-    server_name = clean_title.lower().replace(" ", "_").replace("-", "_").replace(".", "_")
-    # Remove multiple consecutive underscores
-    server_name = re.sub(r"_+", "_", server_name).strip("_")
+    server_name = sanitize_server_name(api_metadata.title)
 
     # Build header with optional icon
     header = f"# {api_metadata.title} - MCP Server\n\n"
