@@ -8,7 +8,7 @@ response normalization with mocked API clients.
 """
 
 from ...models import ApiMetadata, ModuleSpec, SecurityConfig
-from ...utils import sanitize_server_name
+from ...utils import camel_to_snake, sanitize_server_name
 
 
 def generate_server_integration_tests(
@@ -47,8 +47,9 @@ def generate_server_integration_tests(
         # Tool count check for this module
         module_tool_checks.append(f'    ("{mod_name}", {mod_name}_mcp, {spec.tool_count}),')
 
-        # Tag check — tools in this module should have the tag (lowercase)
-        module_metadata_checks.append(f'    ("{mod_name}", {mod_name}_mcp, "{mod_name.lower()}"),')
+        # Tag check — tools in this module should have the tag (snake_case lowercase)
+        expected_tag = camel_to_snake(mod_name)
+        module_metadata_checks.append(f'    ("{mod_name}", {mod_name}_mcp, "{expected_tag}"),')
 
     imports_block = "\n".join(module_imports)
     tool_check_block = "\n".join(module_tool_checks)
