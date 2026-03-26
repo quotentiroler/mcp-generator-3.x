@@ -52,6 +52,24 @@ Notes:
 **Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/50
 
 
+
+- ✨ Features
+  - FastMCP 3.1 features wired, including tags, timeout, version, parameters, and FunctionTool
+  - Behavioral test templates: added edge-case test template and advanced agent-driven iteration templates
+
+- 🐛 Bug Fixes
+  - Generated code improvements based on behavioral test failures (ParameterValidationError, duck-type validation, isoformat datetime, coroutine guard, expanded exception handling)
+
+- 📚 Documentation
+  - Documentation updates: stale version refs, repo URLs, and paths across MD files
+
+- 🔧 Chores & Improvements
+  - Behavioral test template improvements and expanded test coverage
+  - Code style/lint fixes for formatting and ruff violations
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/52
+
+
 ## [3.1.0] - 2026-03-06
 
 ### Added
