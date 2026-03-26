@@ -83,8 +83,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 # Add the generated server source to the path
-_src_path = Path(__file__).parent.parent
-_generated_path = _src_path.parent / "generated_openapi"
+_project_root = Path(__file__).resolve().parent.parent.parent
+_src_path = _project_root / "generated_mcp"
+_generated_path = _project_root / "generated_openapi"
 for _p in [str(_src_path), str(_generated_path)]:
     if _p not in sys.path:
         sys.path.insert(0, _p)
@@ -475,38 +476,38 @@ class TestConfigLoading:
 
     def test_fastmcp_json_exists(self):
         \"\"\"fastmcp.json must exist in the server directory.\"\"\"
-        config_path = Path(__file__).parent.parent / "fastmcp.json"
+        config_path = _src_path / "fastmcp.json"
         assert config_path.exists(), f"fastmcp.json not found at {{config_path}}"
 
     def test_fastmcp_json_valid(self):
         \"\"\"fastmcp.json must be valid JSON.\"\"\"
-        config_path = Path(__file__).parent.parent / "fastmcp.json"
+        config_path = _src_path / "fastmcp.json"
         with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
         assert isinstance(config, dict)
 
     def test_features_section_present(self):
         \"\"\"features section must exist in fastmcp.json.\"\"\"
-        config_path = Path(__file__).parent.parent / "fastmcp.json"
+        config_path = _src_path / "fastmcp.json"
         with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
         assert "features" in config
 
     def test_composition_strategy(self):
         \"\"\"composition strategy should be 'mount'.\"\"\"
-        config_path = Path(__file__).parent.parent / "fastmcp.json"
+        config_path = _src_path / "fastmcp.json"
         with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
         assert config.get("composition", {{}}).get("strategy") == "mount"
 
     def test_pyproject_toml_exists(self):
         \"\"\"pyproject.toml must exist.\"\"\"
-        pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
+        pyproject_path = _src_path / "pyproject.toml"
         assert pyproject_path.exists()
 
     def test_pyproject_requires_fastmcp_3(self):
         \"\"\"pyproject.toml must depend on fastmcp>=3.1.\"\"\"
-        pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
+        pyproject_path = _src_path / "pyproject.toml"
         content = pyproject_path.read_text(encoding="utf-8")
         assert "fastmcp>=" in content
         assert "fastmcp>=3" in content

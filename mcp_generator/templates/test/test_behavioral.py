@@ -91,8 +91,9 @@ from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 import pytest
 
 # ── path setup ──────────────────────────────────────────────────────────
-_src_path = Path(__file__).parent.parent
-_generated_path = _src_path.parent / "generated_openapi"
+_project_root = Path(__file__).resolve().parent.parent.parent
+_src_path = _project_root / "generated_mcp"
+_generated_path = _project_root / "generated_openapi"
 for _p in [str(_src_path), str(_generated_path)]:
     if _p not in sys.path:
         sys.path.insert(0, _p)
