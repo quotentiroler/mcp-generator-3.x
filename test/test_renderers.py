@@ -1,7 +1,13 @@
 """Tests for mcp_generator.renderers — code generation output validation."""
 
+import pytest
+
 from mcp_generator.models import ApiMetadata, SecurityConfig
-from mcp_generator.renderers import render_fastmcp_template, render_pyproject_template
+from mcp_generator.renderers import (
+    generate_tool_for_method,
+    render_fastmcp_template,
+    render_pyproject_template,
+)
 
 # ---------------------------------------------------------------------------
 # render_pyproject_template
@@ -115,11 +121,13 @@ class TestRenderFastmcpTemplate:
             "code_mode",
             "response_limiting",
             "ping_middleware",
+            "rate_limiting",
             "multi_auth",
             "component_versioning",
             "validate_output",
             "dynamic_visibility",
             "opentelemetry",
+            "oauth_proxy",
         }
         assert expected_keys.issubset(set(features.keys()))
 
@@ -203,3 +211,110 @@ class TestRenderFastmcpTemplate:
         )
         assert "opentelemetry-api" in content
         assert "opentelemetry-sdk" in content
+
+    def test_rate_limiting_in_features(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig, sample_modules: dict
+    ) -> None:
+        """rate_limiting key should be present in features."""
+        import json
+
+        content = render_fastmcp_template(
+            api_metadata, security_config_none, sample_modules, total_tools=5, server_name="test"
+        )
+        features = json.loads(content)["features"]
+        assert "rate_limiting" in features
+        rl = features["rate_limiting"]
+        assert "enabled" in rl
+        assert "max_requests_per_second" in rl
+        assert "burst_capacity" in rl
+        assert "global_limit" in rl
+
+    def test_oauth_proxy_in_features(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig, sample_modules: dict
+    ) -> None:
+        """oauth_proxy key should be present in features."""
+        import json
+
+        content = render_fastmcp_template(
+            api_metadata, security_config_none, sample_modules, total_tools=5, server_name="test"
+        )
+        features = json.loads(content)["features"]
+        assert "oauth_proxy" in features
+        op = features["oauth_proxy"]
+        assert "enabled" in op
+        assert "upstream_authorization_endpoint" in op
+        assert "upstream_token_endpoint" in op
+        assert "upstream_client_id" in op
+        assert "upstream_client_secret" in op
+        assert "forward_pkce" in op
+
+
+# ---------------------------------------------------------------------------
+# Generated tool code — progress, elicitation, sampling (FastMCP 3.1)
+# ---------------------------------------------------------------------------
+
+
+class TestGeneratedToolFeatures:
+    """Test that generated tool functions include new FastMCP features."""
+
+    @pytest.fixture
+    def tool_code(self) -> str:
+        """Generate a tool function from a simple API method."""
+
+        def get_pet(pet_id: str) -> dict:
+            """Get a pet by ID."""
+            return {}
+
+        return generate_tool_for_method("pet_api", "get_pet", get_pet, tag_name="pet")
+
+    @pytest.fixture
+    def tool_code_required_params(self) -> str:
+        """Generate a tool with required parameters for elicitation testing."""
+        import inspect
+
+        def add_pet(name: str, status: str) -> dict:
+            """Add a new pet."""
+            return {}
+
+        return generate_tool_for_method("pet_api", "add_pet", add_pet, tag_name="pet")
+
+    def test_progress_reporting_start(self, tool_code: str) -> None:
+        """Tools should report progress at start."""
+        assert "report_progress(0, 3" in tool_code
+
+    def test_progress_reporting_api_call(self, tool_code: str) -> None:
+        """Tools should report progress when calling API."""
+        assert "report_progress(1, 3" in tool_code
+
+    def test_progress_reporting_done(self, tool_code: str) -> None:
+        """Tools should report progress on completion."""
+        assert "report_progress(3, 3" in tool_code
+
+    def test_elicitation_for_missing_params(self, tool_code_required_params: str) -> None:
+        """Tools with required params should include elicitation block."""
+        assert "ctx.elicit(" in tool_code_required_params
+
+    def test_elicitation_checks_missing(self, tool_code_required_params: str) -> None:
+        """Elicitation should check for missing required parameters."""
+        assert "_missing" in tool_code_required_params
+        assert "_required" in tool_code_required_params
+
+    def test_elicitation_handles_decline(self, tool_code_required_params: str) -> None:
+        """Elicitation should handle user declining."""
+        assert "accept" in tool_code_required_params
+
+    def test_elicitation_graceful_fallback(self, tool_code: str) -> None:
+        """Elicitation should not fail if client doesn't support it."""
+        assert "pass  # Elicitation not supported" in tool_code
+
+    def test_sampling_on_api_error(self, tool_code: str) -> None:
+        """Tools should use ctx.sample() for LLM-assisted error recovery on API errors."""
+        assert "ctx.sample(" in tool_code
+
+    def test_sampling_suggestion_in_error(self, tool_code: str) -> None:
+        """Sampling result should be included in the error message as a suggestion."""
+        assert "Suggestion" in tool_code
+
+    def test_sampling_fallback_on_failure(self, tool_code: str) -> None:
+        """If sampling fails, tool should still raise the original API error."""
+        assert "API Error:" in tool_code

@@ -373,3 +373,53 @@ class TestGenerateMainCompositionServer:
         assert "_transforms.append(BM25SearchTransform(" in code
         assert "_transforms.append(CodeMode())" in code
         assert "_transforms.append(_VF(" in code
+
+    # --- FastMCP 3.1 new features: Rate limiting, OAuth Proxy ---
+
+    def test_rate_limiting_middleware_import(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig, _two_modules: dict
+    ) -> None:
+        """RateLimitingMiddleware import should be present."""
+        code = generate_main_composition_server(_two_modules, api_metadata, security_config_none)
+        assert "RateLimitingMiddleware" in code
+
+    def test_rate_limiting_config_block(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig, _two_modules: dict
+    ) -> None:
+        """Rate limiting should read max_requests_per_second, burst_capacity, global_limit."""
+        code = generate_main_composition_server(_two_modules, api_metadata, security_config_none)
+        assert "_rate_limit_cfg" in code
+        assert "max_requests_per_second" in code
+        assert "burst_capacity" in code
+        assert "global_limit" in code
+
+    def test_oauth_proxy_import_with_auth(
+        self, api_metadata: ApiMetadata, security_config_bearer: SecurityConfig, _two_modules: dict
+    ) -> None:
+        """OAuth Proxy import should be present when auth is configured."""
+        code = generate_main_composition_server(_two_modules, api_metadata, security_config_bearer)
+        assert "create_oauth_proxy" in code
+
+    def test_oauth_proxy_config_block(
+        self, api_metadata: ApiMetadata, security_config_bearer: SecurityConfig, _two_modules: dict
+    ) -> None:
+        """OAuth Proxy configuration block should read from features config."""
+        code = generate_main_composition_server(_two_modules, api_metadata, security_config_bearer)
+        assert "_oauth_proxy_cfg" in code
+        assert "create_oauth_proxy(_oauth_proxy_cfg)" in code
+
+    def test_oauth_proxy_uses_http_app_auth(
+        self, api_metadata: ApiMetadata, security_config_bearer: SecurityConfig, _two_modules: dict
+    ) -> None:
+        """OAuth Proxy should use app.http_app(auth=_oauth_proxy)."""
+        code = generate_main_composition_server(_two_modules, api_metadata, security_config_bearer)
+        assert "auth=_oauth_proxy" in code
+
+    def test_oauth_proxy_before_jwt_fallback(
+        self, api_metadata: ApiMetadata, security_config_bearer: SecurityConfig, _two_modules: dict
+    ) -> None:
+        """OAuth Proxy check should come after jwt_verifier setup but before ASGI middleware."""
+        code = generate_main_composition_server(_two_modules, api_metadata, security_config_bearer)
+        proxy_pos = code.index("_oauth_proxy_cfg")
+        jwt_pos = code.index("jwt_verifier = create_jwt_verifier()")
+        assert proxy_pos > jwt_pos

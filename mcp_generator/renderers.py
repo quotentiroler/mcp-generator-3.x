@@ -317,6 +317,10 @@ def _render_tool(spec: ToolSpec) -> str:
     else:
         decorator = "@mcp.tool"
 
+    # Build list of required parameter names for elicitation
+    required_param_names = [p.name for p in spec.parameters if p.required]
+    required_params_literal = ", ".join([f'"{n}"' for n in required_param_names])
+
     code = f'''
 {decorator}
 async def {spec.tool_name}({", ".join(func_params)}) -> dict[str, Any]:
@@ -324,6 +328,22 @@ async def {spec.tool_name}({", ".join(func_params)}) -> dict[str, Any]:
     {spec.docstring}
     """
     try:
+        # Report progress: starting
+        await ctx.report_progress(0, 3, "Validating parameters...")
+
+        # --- Elicitation: ask user for missing required parameters ---
+        _required = [{required_params_literal}]
+        _locals = locals()
+        _missing = [p for p in _required if not _locals.get(p)]
+        if _missing:
+            try:
+                _elicit_msg = f"Missing required parameter(s) for {spec.tool_name}: {{', '.join(_missing)}}. Please provide values."
+                _elicit_resp = await ctx.elicit(_elicit_msg, None)
+                if hasattr(_elicit_resp, "action") and _elicit_resp.action != "accept":
+                    return {{"error": "User declined to provide required parameters"}}
+            except Exception:
+                pass  # Elicitation not supported by client — continue with what we have
+
         # Log tool execution start
         await ctx.info(f"Executing {spec.tool_name}...")
 
@@ -338,7 +358,8 @@ async def {spec.tool_name}({", ".join(func_params)}) -> dict[str, Any]:
         apis = _get_api_instances(openapi_client)
         {spec.api_var_name} = apis['{spec.api_var_name}']{model_imports}{param_conversion_code}
 
-        # Log API call
+        # Report progress: calling API
+        await ctx.report_progress(1, 3, "Calling API...")
         await ctx.debug(f"Calling API: {spec.method_name}")
         response = {spec.api_var_name}.{spec.method_name}({call_args})
 
@@ -397,8 +418,12 @@ async def {spec.tool_name}({", ".join(func_params)}) -> dict[str, Any]:
             except Exception:
                 result = str(response)
 
+        # Report progress: processing response
+        await ctx.report_progress(2, 3, "Processing response...")
+
         # Log successful completion
         await ctx.info(f"✅ {spec.tool_name} completed successfully")
+        await ctx.report_progress(3, 3, "Done")
         return {{"result": result}}
 
     except _ParameterValidationError as e:
@@ -407,7 +432,20 @@ async def {spec.tool_name}({", ".join(func_params)}) -> dict[str, Any]:
     except ApiException as e:
         error_msg = _format_api_error(e)
         await ctx.error(f"API error in {spec.tool_name}: {{error_msg}}")
-        raise Exception(f"API Error: {{error_msg}} (status: {{e.status}})")
+        # --- Sampling: ask LLM to suggest a fix for API errors ---
+        try:
+            _sample_result = await ctx.sample(
+                f"The API call '{spec.tool_name}' failed with: {{error_msg}} (status {{e.status}}). "
+                f"Suggest what the user should do to fix this.",
+                system_prompt="You are a helpful API debugging assistant. Be concise.",
+                max_tokens=200,
+            )
+            _suggestion = _sample_result.result if hasattr(_sample_result, 'result') else str(_sample_result)
+            raise Exception(f"API Error: {{error_msg}} (status: {{e.status}})\n💡 Suggestion: {{_suggestion}}")
+        except Exception as _sample_err:
+            if "API Error:" in str(_sample_err):
+                raise
+            raise Exception(f"API Error: {{error_msg}} (status: {{e.status}})")
     except ConnectionError as e:
         await ctx.error(f"Connection error in {spec.tool_name}: {{str(e)}}")
         raise Exception(f"Connection error: could not reach the API backend. {{str(e)}}")
@@ -417,6 +455,7 @@ async def {spec.tool_name}({", ".join(func_params)}) -> dict[str, Any]:
     except Exception as e:
         await ctx.error(f"Unexpected error in {spec.tool_name}: {{str(e)}}")
         raise Exception(f"Unexpected error in {spec.tool_name}: {{str(e)}}")
+
 '''
 
     return code
