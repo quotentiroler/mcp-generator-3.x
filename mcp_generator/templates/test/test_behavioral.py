@@ -136,7 +136,7 @@ class MockContext:
     async def warning(self, msg: str) -> None:
         self.logs.append(("WARNING", msg))
 
-    async def report_progress(self, current: float, total: float) -> None:
+    async def report_progress(self, current: float, total: float, message: str = "") -> None:
         pass
 
 
