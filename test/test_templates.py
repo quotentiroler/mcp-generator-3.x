@@ -196,3 +196,149 @@ class TestOAuthProviderPropelAuth:
     def test_propelauth_passes_required_scopes(self, oauth_code: str) -> None:
         """Should pass required_scopes to PropelAuthProvider."""
         assert "required_scopes=required_scopes" in oauth_code
+
+
+# ---------------------------------------------------------------------------
+# Server integration test template (FastMCP 3.1)
+# ---------------------------------------------------------------------------
+
+
+class TestServerIntegrationTemplate:
+    """Test that generate_server_integration_tests produces valid test code."""
+
+    @pytest.fixture
+    def integration_code(self) -> str:
+        from mcp_generator.models import ApiMetadata, ModuleSpec
+        from mcp_generator.templates.test.test_server_integration import (
+            generate_server_integration_tests,
+        )
+
+        meta = ApiMetadata(
+            title="Test API",
+            version="1.0.0",
+            servers=[{"url": "http://localhost:3001"}],
+        )
+        sc = SecurityConfig()
+        modules = {
+            "pet": ModuleSpec(
+                filename="pet_server.py",
+                api_var_name="pet_api",
+                api_class_name="PetApi",
+                module_name="pet",
+                tool_count=3,
+                code="",
+            ),
+            "store": ModuleSpec(
+                filename="store_server.py",
+                api_var_name="store_api",
+                api_class_name="StoreApi",
+                module_name="store",
+                tool_count=2,
+                code="",
+            ),
+        }
+        return generate_server_integration_tests(modules, meta, sc)
+
+    def test_generates_code(self, integration_code: str) -> None:
+        assert isinstance(integration_code, str)
+        assert len(integration_code) > 500
+
+    def test_imports_fastmcp_client(self, integration_code: str) -> None:
+        assert "from fastmcp import FastMCP, Client" in integration_code
+
+    def test_imports_server_modules(self, integration_code: str) -> None:
+        assert "from servers.pet_server import mcp as pet_mcp" in integration_code
+        assert "from servers.store_server import mcp as store_mcp" in integration_code
+
+    def test_has_module_tool_counts(self, integration_code: str) -> None:
+        assert "pet_mcp, 3" in integration_code
+        assert "store_mcp, 2" in integration_code
+
+    def test_has_composition_tests(self, integration_code: str) -> None:
+        assert "class TestComposition" in integration_code
+        assert "create_server" in integration_code
+
+    def test_has_error_formatting_tests(self, integration_code: str) -> None:
+        assert "class TestErrorFormatting" in integration_code
+        assert "_format_api_error" in integration_code
+
+    def test_has_tool_execution_tests(self, integration_code: str) -> None:
+        assert "class TestToolExecutionMocked" in integration_code
+        assert "call_tool" in integration_code
+
+    def test_has_config_loading_tests(self, integration_code: str) -> None:
+        assert "class TestConfigLoading" in integration_code
+        assert "fastmcp.json" in integration_code
+
+    def test_has_mock_patterns(self, integration_code: str) -> None:
+        """Should use unittest.mock for mocking without live backend."""
+        assert "MagicMock" in integration_code
+        assert "to_dict" in integration_code
+
+    def test_total_tool_count_in_assertions(self, integration_code: str) -> None:
+        assert "TOTAL_TOOL_COUNT" in integration_code
+        # 3 + 2 = 5
+        assert "== 5" in integration_code
+
+
+# ---------------------------------------------------------------------------
+# Tool schema validation test template
+# ---------------------------------------------------------------------------
+
+
+class TestToolSchemaTemplate:
+    """Test that generate_tool_schema_tests produces valid test code."""
+
+    @pytest.fixture
+    def schema_code(self) -> str:
+        from mcp_generator.models import ApiMetadata, ModuleSpec
+        from mcp_generator.templates.test.test_tool_schemas import (
+            generate_tool_schema_tests,
+        )
+
+        meta = ApiMetadata(
+            title="Test API",
+            version="1.0.0",
+            servers=[{"url": "http://localhost:3001"}],
+        )
+        sc = SecurityConfig()
+        modules = {
+            "pet": ModuleSpec(
+                filename="pet_server.py",
+                api_var_name="pet_api",
+                api_class_name="PetApi",
+                module_name="pet",
+                tool_count=3,
+                code="",
+            ),
+        }
+        return generate_tool_schema_tests(modules, meta, sc)
+
+    def test_generates_code(self, schema_code: str) -> None:
+        assert isinstance(schema_code, str)
+        assert len(schema_code) > 400
+
+    def test_imports_fastmcp_client(self, schema_code: str) -> None:
+        assert "from fastmcp import Client" in schema_code
+
+    def test_has_openapi_spec_fixture(self, schema_code: str) -> None:
+        assert "def openapi_spec" in schema_code
+        assert "openapi.json" in schema_code
+
+    def test_has_coverage_tests(self, schema_code: str) -> None:
+        assert "class TestToolCoverage" in schema_code
+
+    def test_has_parameter_schema_tests(self, schema_code: str) -> None:
+        assert "class TestParameterSchemas" in schema_code
+        assert "test_all_params_are_typed" in schema_code
+        assert "test_optional_params_have_defaults" in schema_code
+        assert "test_no_internal_params_exposed" in schema_code
+
+    def test_has_deprecated_detection(self, schema_code: str) -> None:
+        assert "class TestDeprecatedTools" in schema_code
+
+    def test_has_response_structure_tests(self, schema_code: str) -> None:
+        assert "class TestResponseStructure" in schema_code
+
+    def test_has_no_duplicate_check(self, schema_code: str) -> None:
+        assert "test_no_duplicate_tool_names" in schema_code

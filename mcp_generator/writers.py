@@ -493,6 +493,8 @@ def write_test_files(
     resource_test_code: str | None = None,
     transform_test_code: str | None = None,
     multi_auth_test_code: str | None = None,
+    server_integration_test_code: str | None = None,
+    tool_schema_test_code: str | None = None,
 ) -> None:
     """
     Write generated test files to the filesystem.
@@ -509,6 +511,8 @@ def write_test_files(
         resource_test_code: Generated resource template tests (None if resources not enabled)
         transform_test_code: Generated transform tests (FastMCP 3.1 features)
         multi_auth_test_code: Generated multi-auth tests (FastMCP 3.1 features, None if no auth)
+        server_integration_test_code: Generated in-process integration tests
+        tool_schema_test_code: Generated tool schema validation tests
     """
     test_dir.mkdir(parents=True, exist_ok=True)
 
@@ -580,6 +584,20 @@ def write_test_files(
         with open(multi_auth_file, "w", encoding="utf-8") as f:
             f.write(multi_auth_test_code)
         print("   ✅ test_multi_auth_generated.py")
+
+    # Write server integration tests (in-process, no HTTP needed)
+    if server_integration_test_code:
+        integration_file = test_dir / "test_server_integration_generated.py"
+        with open(integration_file, "w", encoding="utf-8") as f:
+            f.write(server_integration_test_code)
+        print("   ✅ test_server_integration_generated.py")
+
+    # Write tool schema validation tests
+    if tool_schema_test_code:
+        schema_file = test_dir / "test_tool_schemas_generated.py"
+        with open(schema_file, "w", encoding="utf-8") as f:
+            f.write(tool_schema_test_code)
+        print("   ✅ test_tool_schemas_generated.py")
 
 
 def write_test_runner(test_runner_code: str, output_file: Path) -> None:

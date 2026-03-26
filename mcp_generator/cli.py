@@ -23,7 +23,9 @@ from .test_generator import (
     generate_openapi_feature_tests,
     generate_performance_tests,
     generate_resource_tests,
+    generate_server_integration_tests,
     generate_test_runner,
+    generate_tool_schema_tests,
     generate_tool_tests,
     generate_transform_tests,
 )
@@ -380,6 +382,16 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
             print("   • FastMCP 3.1 multi-auth tests")
             multi_auth_test_code = generate_multi_auth_tests(api_metadata, security_config, modules)
 
+        # Always generate in-process integration tests and schema validation
+        print("   • Server integration tests (in-process)")
+        server_integration_test_code = generate_server_integration_tests(
+            modules, api_metadata, security_config
+        )
+        print("   • Tool schema validation tests")
+        tool_schema_test_code = generate_tool_schema_tests(
+            modules, api_metadata, security_config
+        )
+
         if security_config.has_authentication():
             print("   • Authentication flow tests")
             auth_test_code = generate_auth_flow_tests(api_metadata, security_config, modules)
@@ -397,6 +409,8 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                 resource_test_code,
                 transform_test_code,
                 multi_auth_test_code,
+                server_integration_test_code,
+                tool_schema_test_code,
             )
         else:
             print("   • Basic tool tests (no auth required)")
@@ -413,6 +427,8 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                 resource_test_code,
                 transform_test_code,
                 multi_auth_test_code,
+                server_integration_test_code,
+                tool_schema_test_code,
             )
 
         # Generate test runner script

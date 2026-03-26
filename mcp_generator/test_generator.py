@@ -21,6 +21,10 @@ from .templates.test.test_oauth_persistence import (
     generate_oauth_persistence_tests as _generate_oauth_persistence,
 )
 from .templates.test.test_resources import generate_resource_tests as _generate_resources
+from .templates.test.test_server_integration import (
+    generate_server_integration_tests as _generate_server_integration,
+)
+from .templates.test.test_tool_schemas import generate_tool_schema_tests as _generate_tool_schemas
 from .templates.test.test_tools import generate_tool_tests as _generate_tools
 from .templates.test.test_transforms import generate_transform_tests as _generate_transforms
 
@@ -300,3 +304,46 @@ def generate_multi_auth_tests(
         str: Test file content for multi-auth validation
     """
     return _generate_multi_auth(api_metadata, security_config, modules)
+
+
+def generate_server_integration_tests(
+    modules: dict[str, ModuleSpec],
+    api_metadata: ApiMetadata,
+    security_config: SecurityConfig,
+) -> str:
+    """Generate in-process server integration tests.
+
+    These tests import generated server modules directly and use
+    fastmcp.Client for tool invocation without HTTP — no running
+    server needed.
+
+    Args:
+        modules: Generated server modules
+        api_metadata: API metadata
+        security_config: Security configuration
+
+    Returns:
+        str: Test file content for server integration
+    """
+    return _generate_server_integration(modules, api_metadata, security_config)
+
+
+def generate_tool_schema_tests(
+    modules: dict[str, ModuleSpec],
+    api_metadata: ApiMetadata,
+    security_config: SecurityConfig,
+) -> str:
+    """Generate tool schema validation tests.
+
+    Cross-references MCP tool schemas against the OpenAPI spec to
+    detect parameter drift and mismatches.
+
+    Args:
+        modules: Generated server modules
+        api_metadata: API metadata
+        security_config: Security configuration
+
+    Returns:
+        str: Test file content for schema validation
+    """
+    return _generate_tool_schemas(modules, api_metadata, security_config)
