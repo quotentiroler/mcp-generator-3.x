@@ -303,13 +303,18 @@ class TestRenderFastmcpTemplate:
         parsed = json.loads(content)
         oauth_proxy = parsed["features"]["oauth_proxy"]
         assert oauth_proxy["enabled"] is True
-        assert oauth_proxy["upstream_authorization_endpoint"] == "https://auth.example.com/authorize"
+        assert (
+            oauth_proxy["upstream_authorization_endpoint"] == "https://auth.example.com/authorize"
+        )
         assert oauth_proxy["upstream_token_endpoint"] == "https://auth.example.com/token"
         assert set(oauth_proxy["valid_scopes"]) == {"read", "write"}
         assert parsed["middleware"]["config"]["authentication"]["validate_tokens"] is True
 
     def test_oauth_client_credentials_no_proxy(
-        self, api_metadata: ApiMetadata, security_config_bearer: SecurityConfig, sample_modules: dict
+        self,
+        api_metadata: ApiMetadata,
+        security_config_bearer: SecurityConfig,
+        sample_modules: dict,
     ) -> None:
         """clientCredentials flow should NOT enable oauth_proxy (only authorizationCode does)."""
         import json
