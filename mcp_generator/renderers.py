@@ -107,6 +107,8 @@ def render_pyproject_template(
 
 def render_fastmcp_template(api_metadata, security_config, modules, total_tools, server_name):
     """Render the fastmcp.json template with provided values."""
+    import json
+
     template_path = Path(__file__).parent / "templates" / "fastmcp_template.json"
     with open(template_path, encoding="utf-8") as f:
         template = f.read()
@@ -116,13 +118,39 @@ def render_fastmcp_template(api_metadata, security_config, modules, total_tools,
 
     service_name = sanitize_server_name(api_metadata.title).replace("_", "-")
 
-    # Simple replacements for demonstration; expand as needed
-    return (
+    # Determine auth settings from security config
+    # Only enable JWT validation for bearer schemes or authorizationCode OAuth2 flows
+    has_bearer = security_config and security_config.bearer_format
+    has_auth_code = (
+        security_config
+        and security_config.oauth_config
+        and "authorizationCode" in security_config.oauth_config.flows
+    )
+    validate_tokens = "true" if (has_bearer or has_auth_code) else "false"
+
+    rendered = (
         template.replace("{{composition_strategy}}", "mount")
         .replace("{{resource_prefix_format}}", "path")
-        .replace("{{validate_tokens}}", "false")
+        .replace("{{validate_tokens}}", validate_tokens)
         .replace("{{service_name}}", f"{service_name}-mcp")
     )
+
+    # Auto-populate oauth_proxy when an authorizationCode flow is detected
+    if security_config and security_config.oauth_config:
+        auth_code_flow = security_config.oauth_config.flows.get("authorizationCode")
+        if auth_code_flow:
+            parsed = json.loads(rendered)
+            oauth_proxy = parsed["features"]["oauth_proxy"]
+            oauth_proxy["enabled"] = True
+            if auth_code_flow.authorization_url:
+                oauth_proxy["upstream_authorization_endpoint"] = auth_code_flow.authorization_url
+            if auth_code_flow.token_url:
+                oauth_proxy["upstream_token_endpoint"] = auth_code_flow.token_url
+            if auth_code_flow.scopes:
+                oauth_proxy["valid_scopes"] = list(auth_code_flow.scopes.keys())
+            rendered = json.dumps(parsed, indent=2) + "\n"
+
+    return rendered
 
 
 def generate_tool_for_method(

@@ -2,7 +2,7 @@
 
 import pytest
 
-from mcp_generator.models import ApiMetadata, SecurityConfig
+from mcp_generator.models import ApiMetadata, OAuthConfig, OAuthFlowConfig, SecurityConfig
 from mcp_generator.renderers import (
     generate_tool_for_method,
     render_fastmcp_template,
@@ -247,6 +247,101 @@ class TestRenderFastmcpTemplate:
         assert "upstream_client_id" in op
         assert "upstream_client_secret" in op
         assert "forward_pkce" in op
+
+    def test_no_auth_validate_tokens_false(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig, sample_modules: dict
+    ) -> None:
+        """When no auth is configured, validate_tokens should be false."""
+        import json
+
+        content = render_fastmcp_template(
+            api_metadata, security_config_none, sample_modules, total_tools=5, server_name="test"
+        )
+        parsed = json.loads(content)
+        assert parsed["middleware"]["config"]["authentication"]["validate_tokens"] is False
+
+    def test_bearer_only_validate_tokens_true(
+        self, api_metadata: ApiMetadata, sample_modules: dict
+    ) -> None:
+        """When bearer auth is configured (no authorizationCode flow), validate_tokens should be true."""
+        import json
+
+        sc = SecurityConfig(
+            schemes={"bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}},
+            bearer_format="JWT",
+        )
+        content = render_fastmcp_template(
+            api_metadata, sc, sample_modules, total_tools=5, server_name="test"
+        )
+        parsed = json.loads(content)
+        assert parsed["middleware"]["config"]["authentication"]["validate_tokens"] is True
+        assert parsed["features"]["oauth_proxy"]["enabled"] is False
+
+    def test_oauth_authorization_code_enables_proxy(
+        self, api_metadata: ApiMetadata, sample_modules: dict
+    ) -> None:
+        """When an authorizationCode flow is detected, oauth_proxy should be auto-populated."""
+        import json
+
+        sc = SecurityConfig(
+            schemes={"oauth2": {"type": "oauth2"}},
+            oauth_config=OAuthConfig(
+                scheme_name="oauth2",
+                flows={
+                    "authorizationCode": OAuthFlowConfig(
+                        authorization_url="https://auth.example.com/authorize",
+                        token_url="https://auth.example.com/token",
+                        scopes={"read": "Read access", "write": "Write access"},
+                    )
+                },
+                all_scopes={"read": "Read access", "write": "Write access"},
+            ),
+        )
+        content = render_fastmcp_template(
+            api_metadata, sc, sample_modules, total_tools=5, server_name="test"
+        )
+        parsed = json.loads(content)
+        oauth_proxy = parsed["features"]["oauth_proxy"]
+        assert oauth_proxy["enabled"] is True
+        assert (
+            oauth_proxy["upstream_authorization_endpoint"] == "https://auth.example.com/authorize"
+        )
+        assert oauth_proxy["upstream_token_endpoint"] == "https://auth.example.com/token"
+        assert set(oauth_proxy["valid_scopes"]) == {"read", "write"}
+        assert parsed["middleware"]["config"]["authentication"]["validate_tokens"] is True
+
+    def test_oauth_client_credentials_no_proxy(
+        self,
+        api_metadata: ApiMetadata,
+        security_config_bearer: SecurityConfig,
+        sample_modules: dict,
+    ) -> None:
+        """clientCredentials flow should NOT enable oauth_proxy (only authorizationCode does)."""
+        import json
+
+        content = render_fastmcp_template(
+            api_metadata, security_config_bearer, sample_modules, total_tools=5, server_name="test"
+        )
+        parsed = json.loads(content)
+        assert parsed["features"]["oauth_proxy"]["enabled"] is False
+        # But validate_tokens should still be true since auth schemes exist
+        assert parsed["middleware"]["config"]["authentication"]["validate_tokens"] is True
+
+    def test_apikey_only_validate_tokens_false(
+        self, api_metadata: ApiMetadata, sample_modules: dict
+    ) -> None:
+        """apiKey-only auth should NOT enable validate_tokens (no JWT to validate)."""
+        import json
+
+        sc = SecurityConfig(
+            schemes={"api_key": {"type": "apiKey", "name": "api_key", "in": "header"}},
+        )
+        content = render_fastmcp_template(
+            api_metadata, sc, sample_modules, total_tools=5, server_name="test"
+        )
+        parsed = json.loads(content)
+        assert parsed["middleware"]["config"]["authentication"]["validate_tokens"] is False
+        assert parsed["features"]["oauth_proxy"]["enabled"] is False
 
 
 # ---------------------------------------------------------------------------
