@@ -5,6 +5,99 @@ All notable changes to MCP Generator 3.x will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1-rc.1+23e773c] - 2026-03-27
+
+### Changed
+
+- Dependencies updated
+
+## [3.1.1-rc+2b7ece3] - 2026-03-26
+
+### Changed
+
+- Dependencies updated
+
+
+- ✨ Features: FastMCP 3.1 features — RateLimiting, OAuthProxy, progress/elicitation/sampling, SSRF protection
+  - Add RateLimitingMiddleware (token-bucket) with configurable max_rps, burst, global_limit
+  - Add OAuthProxy for bridging non-DCR IdPs (Auth0, Okta, Azure AD) to MCP auth
+  - Add ctx.report_progress() calls
+
+- 🔧 Chores & Improvements: Code quality and test/template enhancements
+  - Various tests/templates and code quality improvements (camel_to_snake updates, tag handling, sys.path setup, server name sanitization, Ruff lint fixes, formatting)
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/54
+
+
+
+- ✨ Features: Auto-populate fastmcp.json auth config from OpenAPI security schemes
+  - Enable oauth_proxy with upstream URLs and valid_scopes for OAuth2 authorizationCode
+  - Enable validate_tokens for bearer auth schemes
+
+- 🔧 Chores & Improvements: Minor formatting fixes in tests (ruff)
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/55
+
+
+## [3.1.1-beta+d025b9d] - 2026-03-12
+
+### Changed
+
+- Dependencies updated
+
+
+- ✨ Features: None
+- 🐛 Bug Fixes: None
+- 📚 Documentation: None
+- 🔧 Chores & Improvements:
+  - Sync main into develop and prepare staging (pre-release 3.1.1-beta)
+  - Resolve merge conflicts and keep 3.1.1-alpha version
+  - Update changelog formatting for version bumps
+  - Update version metadata
+- ⚠️ Breaking Changes: None
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/47
+
+
+
+- 🔧 Chores & Improvements: CI/CD and internal maintenance
+- 🐛 Bug Fixes: Corrected repo name for release check (mcp-generator-2.0 vs mcp-generator-3.x)
+- 📚 Documentation: Update CHANGELOG references and PR notes
+- ⚠️ Breaking Changes: None detected
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/49
+
+
+
+- 🔧 Chores & Improvements: Sync version bumps and metadata after staging merge; ensure develop remains ahead of staging
+- 🐛 Bug Fixes: Fix version bump propagation to develop and correct repo name for release checks
+- 📚 Documentation: Update CHANGELOG.md references for previous PRs
+- ⚠️ Breaking Changes: None detected for this pre-release
+
+Notes:
+- Includes: bump to 3.1.1-beta, sync back to develop, prevent revert of version bumps on merges, and changelog diff improvements.
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/50
+
+
+
+- ✨ Features
+  - FastMCP 3.1 features wired, including tags, timeout, version, parameters, and FunctionTool
+  - Behavioral test templates: added edge-case test template and advanced agent-driven iteration templates
+
+- 🐛 Bug Fixes
+  - Generated code improvements based on behavioral test failures (ParameterValidationError, duck-type validation, isoformat datetime, coroutine guard, expanded exception handling)
+
+- 📚 Documentation
+  - Documentation updates: stale version refs, repo URLs, and paths across MD files
+
+- 🔧 Chores & Improvements
+  - Behavioral test template improvements and expanded test coverage
+  - Code style/lint fixes for formatting and ruff violations
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/52
+
+
 ## [3.1.0] - 2026-03-06
 
 ### Added

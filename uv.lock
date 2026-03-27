@@ -975,7 +975,7 @@ wheels = [
 
 [[package]]
 name = "mcp-generator"
-version = "3.1.1b0"
+version = "3.1.1rc1"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -1015,7 +1015,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "cryptography", specifier = ">=43.0.0" },
-    { name = "fastmcp", specifier = ">=3.0.0" },
+    { name = "fastmcp", specifier = ">=3.1.0" },
     { name = "mypy", specifier = ">=1.13.0" },
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "pytest-asyncio", specifier = ">=0.24.0" },
