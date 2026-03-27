@@ -11,6 +11,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Dependencies updated
 
+
+- ✨ Features
+  - feat: Auto-populate FastMCP.json auth config from OpenAPI security schemes
+  - feat: FastMCP 3.1 features — RateLimiting, OAuthProxy, progress/elicitation/sampling, SSRF protection
+  - feat: Behavioral edge-case generated test template
+  - feat: Advanced generated test templates for agent-driven iteration
+  - feat: Wire FastMCP 3.1 features + comprehensive test coverage
+
+- 🐛 Bug Fixes
+  - fix: only enable validate_tokens for bearer/authorizationCode schemes
+  - fix: first-tag-wins dedup for multi-tag operations
+  - fix: use camel_to_snake for expected tool tags in test_server_integration template
+  - fix: lowercase expected tag in test_server_integration template
+  - fix: exclude behavioral tests from default CI run; fix MockContext.report_progress signature
+  - fix: fix sys.path setup in generated test templates for correct module resolution
+  - fix: centralize server name sanitization to prevent invalid Python identifiers
+  - fix: escape newline in sampling error template to prevent SyntaxError
+  - fix: resolve all Ruff lint errors (import sort, unused vars, bare except, f-strings)
+
+- 📚 Documentation
+  - docs: update CHANGELOG.md for PRs and version updates
+
+- 🔧 Chores & Improvements
+  - chore: update version metadata and related commit housekeeping
+  - chore: ruff formatting and lint improvements across files
+  - chore: update proxy-openapi/json references to reflect latest beta/stable
+  - chore: sync main into develop and staging branches during release process
+  - chore: update repo references, paths, and docs for stable release
+  - chore: remove stale tests and adjust tracking
+
+- ⚠️ Breaking Changes
+  - none detected
+
+- 🔧 Chores & Improvements (internal)
+  - internal updates and maintenance
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/57
+
+
 ## [3.1.1-rc+2b7ece3] - 2026-03-26
 
 ### Changed
