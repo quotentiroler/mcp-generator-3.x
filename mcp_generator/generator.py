@@ -75,6 +75,7 @@ def generate_main_composition_server(
     composition_strategy: str = "mount",
     resource_prefix_format: str = "path",
     enable_apps: bool = False,
+    display_tags: list[str] | None = None,
 ) -> str:
     """Generate main server that composes all modular servers.
 
@@ -167,7 +168,13 @@ else:
         except UnicodeEncodeError:
             print("  GenerativeUI provider enabled")\
 """
-
+        # Mount API-specific display modules (Phase 2)
+        if display_tags:
+            apps_import += "\n# API-specific display tools (generated from response schemas)\n"
+            for tag in sorted(display_tags):
+                var = f"{tag}_display_mcp"
+                apps_import += f"from apps.{tag}_display import mcp as {var}\n"
+                apps_composition += f'\n    app.mount({var}, namespace="{tag}_ui")'
     # Build comprehensive header
     header_lines = [
         '"""',

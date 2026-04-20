@@ -25,19 +25,30 @@ try:
     from prefab_ui.components import (
         Badge,
         Button,
+        Card,
+        CardContent,
+        CardHeader,
         Column,
         DataTable,
         DataTableColumn,
         ForEach,
         Form,
+        Grid,
         Heading,
         Input,
+        Metric,
         Muted,
         Row,
         Separator,
         Text,
     )
-    from prefab_ui.components.charts import BarChart, ChartSeries, LineChart
+    from prefab_ui.components.charts import (
+        AreaChart,
+        BarChart,
+        ChartSeries,
+        LineChart,
+        PieChart,
+    )
     from prefab_ui.actions import SetState, ShowToast
     from prefab_ui.actions.mcp import CallTool
     from prefab_ui.rx import RESULT
@@ -62,30 +73,45 @@ mcp = FastMCP("DisplayTools")
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
     tags=["display"],
-    description="Display data as an interactive, sortable table.",
+    description="Display data as an interactive, sortable, searchable table.",
 )
 def show_table(
     title: str,
     columns: list[dict[str, str]],
     rows: list[dict[str, Any]],
+    subtitle: str = "",
 ) -> Any:
-    """Display data as an interactive table.
+    """Display data as an interactive table with sorting and search.
 
     Args:
         title: Table heading.
         columns: Column definitions, each with 'key' and 'label'.
+                 Optional 'sortable' (bool, default true).
                  Example: [{"key": "id", "label": "ID"}, {"key": "name", "label": "Name"}]
         rows: Row data as list of dicts matching column keys.
               Example: [{"id": 1, "name": "Buddy"}, {"id": 2, "name": "Max"}]
+        subtitle: Optional description shown below the heading.
     """
     if not PREFAB_AVAILABLE:
         return {"title": title, "columns": columns, "rows": rows}
 
-    with Column(gap=4, css_class="p-6") as view:
+    with Column(gap=5, css_class="p-6 max-w-4xl") as view:
         Heading(title)
+        if subtitle:
+            Muted(subtitle)
+        with Row(gap=2, align="center"):
+            Badge(f"{len(rows)} records", variant="outline")
         DataTable(
             rows=rows,
-            columns=[DataTableColumn(key=c["key"], header=c.get("label", c["key"])) for c in columns],
+            columns=[
+                DataTableColumn(
+                    key=c["key"],
+                    header=c.get("label", c["key"]),
+                    sortable=c.get("sortable", True),
+                )
+                for c in columns
+            ],
+            search=True,
         )
 
     return PrefabApp(view=view)
@@ -99,33 +125,44 @@ def show_table(
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
     tags=["display"],
-    description="Display a single record as a key-value detail card.",
+    description="Display a single record as a professional key-value detail card.",
 )
 def show_detail(
     title: str,
     fields: list[dict[str, Any]],
+    subtitle: str = "",
 ) -> Any:
-    """Display a record as a key-value detail card.
+    """Display a record as a key-value detail card with badges for highlighted values.
 
     Args:
         title: Card heading.
         fields: Field definitions, each with 'label' and 'value'.
                 Optional 'variant' for Badge styling ('default', 'outline', 'success', 'warning', 'error').
                 Example: [{"label": "Name", "value": "Buddy"}, {"label": "Status", "value": "available", "variant": "success"}]
+        subtitle: Optional description shown below the heading.
     """
     if not PREFAB_AVAILABLE:
         return {"title": title, "fields": fields}
 
-    with Column(gap=4, css_class="p-6") as view:
+    with Column(gap=5, css_class="p-6 max-w-2xl") as view:
         Heading(title)
-        for field in fields:
-            with Row(gap=3, align="center"):
-                Text(str(field["label"]), css_class="font-medium text-muted-foreground w-32")
-                variant = field.get("variant")
-                if variant:
-                    Badge(str(field["value"]), variant=variant)
-                else:
-                    Text(str(field["value"]))
+        if subtitle:
+            Muted(subtitle)
+        with Card():
+            with CardContent(css_class="py-4"):
+                for i, fld in enumerate(fields):
+                    with Row(gap=4, align="center", css_class="py-2"):
+                        Text(
+                            str(fld["label"]),
+                            css_class="font-medium text-muted-foreground w-40 shrink-0",
+                        )
+                        variant = fld.get("variant")
+                        if variant:
+                            Badge(str(fld["value"]), variant=variant)
+                        else:
+                            Text(str(fld["value"]), css_class="font-medium")
+                    if i < len(fields) - 1:
+                        Separator()
 
     return PrefabApp(view=view)
 
@@ -138,7 +175,7 @@ def show_detail(
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
     tags=["display"],
-    description="Display data as a bar or line chart.",
+    description="Display data as a bar, line, area, or pie chart with legend.",
 )
 def show_chart(
     title: str,
@@ -146,8 +183,9 @@ def show_chart(
     x_axis: str,
     y_axes: list[dict[str, str]],
     chart_type: str = "bar",
+    subtitle: str = "",
 ) -> Any:
-    """Display data as an interactive chart.
+    """Display data as an interactive chart with multiple series support.
 
     Args:
         title: Chart heading.
@@ -156,17 +194,23 @@ def show_chart(
         x_axis: Key in data to use as X axis (e.g. "month").
         y_axes: Series definitions, each with 'key' and 'label'.
                 Example: [{"key": "revenue", "label": "Revenue"}, {"key": "cost", "label": "Cost"}]
-        chart_type: 'bar' or 'line' (default: 'bar').
+        chart_type: 'bar', 'line', 'area', or 'pie' (default: 'bar').
+        subtitle: Optional description shown below the heading.
     """
     if not PREFAB_AVAILABLE:
         return {"title": title, "chart_type": chart_type, "data": data, "x_axis": x_axis, "y_axes": y_axes}
 
+    chart_classes = {"bar": BarChart, "line": LineChart, "area": AreaChart, "pie": PieChart}
+    ChartClass = chart_classes.get(chart_type, BarChart)
     series = [ChartSeries(data_key=y["key"], label=y.get("label", y["key"])) for y in y_axes]
-    ChartClass = LineChart if chart_type == "line" else BarChart
 
-    with Column(gap=4, css_class="p-6") as view:
+    with Column(gap=5, css_class="p-6 max-w-4xl") as view:
         Heading(title)
-        ChartClass(data=data, series=series, x_axis=x_axis)
+        if subtitle:
+            Muted(subtitle)
+        with Card():
+            with CardContent(css_class="pt-4"):
+                ChartClass(data=data, series=series, x_axis=x_axis, show_legend=True)
 
     return PrefabApp(view=view)
 
@@ -179,13 +223,14 @@ def show_chart(
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
     tags=["display"],
-    description="Display a dynamic form that submits data to another tool.",
+    description="Display a dynamic form with validation that submits to another tool.",
 )
 def show_form(
     title: str,
     fields: list[dict[str, Any]],
     submit_tool: str,
     submit_label: str = "Submit",
+    subtitle: str = "",
 ) -> Any:
     """Display a form that submits its values to another MCP tool.
 
@@ -196,27 +241,33 @@ def show_form(
                 Example: [{"name": "email", "label": "Email", "required": true, "type": "email"}]
         submit_tool: Name of the MCP tool to call on form submission.
         submit_label: Button text (default: 'Submit').
+        subtitle: Optional description shown below the heading.
     """
     if not PREFAB_AVAILABLE:
         return {"title": title, "fields": fields, "submit_tool": submit_tool}
 
-    with Column(gap=4, css_class="p-6") as view:
+    with Column(gap=5, css_class="p-6 max-w-2xl") as view:
         Heading(title)
-        with Form(
-            on_submit=CallTool(
-                submit_tool,
-                on_success=ShowToast("Success!", variant="success"),
-                on_error=ShowToast("Something went wrong", variant="error"),
-            )
-        ):
-            for f in fields:
-                Input(
-                    name=f["name"],
-                    label=f.get("label", f["name"]),
-                    required=f.get("required", False),
-                    placeholder=f.get("placeholder", ""),
-                )
-            Button(submit_label)
+        if subtitle:
+            Muted(subtitle)
+        with Card():
+            with CardContent(css_class="py-4"):
+                with Form(
+                    on_submit=CallTool(
+                        submit_tool,
+                        on_success=ShowToast("Success!", variant="success"),
+                        on_error=ShowToast("Something went wrong", variant="error"),
+                    )
+                ):
+                    with Column(gap=4):
+                        for f in fields:
+                            Input(
+                                name=f["name"],
+                                label=f.get("label", f["name"]),
+                                required=f.get("required", False),
+                                placeholder=f.get("placeholder", ""),
+                            )
+                        Button(submit_label, css_class="w-full")
 
     return PrefabApp(view=view)
 
@@ -229,14 +280,15 @@ def show_form(
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
     tags=["display"],
-    description="Display a side-by-side comparison of items.",
+    description="Display a side-by-side comparison of items with highlights.",
 )
 def show_comparison(
     title: str,
     items: list[dict[str, Any]],
     highlight_key: str | None = None,
+    subtitle: str = "",
 ) -> Any:
-    """Display items side-by-side for comparison.
+    """Display items side-by-side for comparison in individual cards.
 
     Args:
         title: Comparison heading.
@@ -244,6 +296,7 @@ def show_comparison(
                Example: [{"name": "Plan A", "price": "$10", "storage": "5GB"},
                          {"name": "Plan B", "price": "$20", "storage": "50GB"}]
         highlight_key: Optional key whose value gets a colored Badge for emphasis.
+        subtitle: Optional description shown below the heading.
     """
     if not PREFAB_AVAILABLE:
         return {"title": title, "items": items, "highlight_key": highlight_key}
@@ -254,29 +307,28 @@ def show_comparison(
             Muted("No items to compare.")
         return PrefabApp(view=view)
 
-    # Use keys from the first item as the row labels
     keys = list(items[0].keys())
+    # First key is used as the card heading
+    name_key = keys[0]
+    detail_keys = keys[1:]
 
-    with Column(gap=4, css_class="p-6") as view:
+    with Column(gap=5, css_class="p-6") as view:
         Heading(title)
-        # Header row with item identifiers
-        with Row(gap=4):
-            Text("", css_class="w-32")  # spacer for label column
+        if subtitle:
+            Muted(subtitle)
+        with Grid(columns=len(items), gap=4):
             for item in items:
-                first_val = str(item.get(keys[0], ""))
-                Heading(first_val, level=4, css_class="flex-1 text-center")
-
-        Separator()
-
-        # Data rows
-        for key in keys[1:]:
-            with Row(gap=4, align="center"):
-                Text(key, css_class="font-medium text-muted-foreground w-32")
-                for item in items:
-                    val = str(item.get(key, ""))
-                    if key == highlight_key:
-                        Badge(val, variant="outline", css_class="flex-1 text-center")
-                    else:
-                        Text(val, css_class="flex-1 text-center")
+                with Card():
+                    with CardHeader():
+                        Heading(str(item.get(name_key, "")), level=3)
+                    with CardContent():
+                        for key in detail_keys:
+                            with Row(gap=3, align="center", css_class="py-1"):
+                                Muted(key, css_class="w-28 shrink-0 text-xs uppercase tracking-wide")
+                                val = str(item.get(key, ""))
+                                if key == highlight_key:
+                                    Badge(val, variant="success")
+                                else:
+                                    Text(val, css_class="font-medium")
 
     return PrefabApp(view=view)

@@ -122,6 +122,62 @@ def write_apps_package(output_dir: Path) -> None:
     print("   ✅ apps/__init__.py")
 
 
+def write_display_modules(display_modules: dict[str, str], apps_dir: Path) -> None:
+    """Write API-specific display tool modules (e.g. pet_display.py, store_display.py).
+
+    Also updates apps/__init__.py to export the new display modules.
+    """
+    apps_dir.mkdir(exist_ok=True, parents=True)
+
+    written = []
+    for tag, code in display_modules.items():
+        filename = f"{tag}_display.py"
+        dest = apps_dir / filename
+        dest.write_text(code, encoding="utf-8")
+        written.append((tag, filename))
+        print(f"   ✅ apps/{filename}")
+
+    # Update __init__.py to include display modules
+    if written:
+        init_file = apps_dir / "__init__.py"
+        init_content = init_file.read_text(encoding="utf-8") if init_file.exists() else ""
+
+        new_imports = []
+        new_all_entries = []
+        for tag, filename in written:
+            module = filename.replace(".py", "")
+            var_name = f"{tag}_display_mcp"
+            import_line = f"from .{module} import mcp as {var_name}"
+            if import_line not in init_content:
+                new_imports.append(import_line)
+                new_all_entries.append(f'    "{var_name}",')
+
+        if new_imports:
+            lines = init_content.rstrip().split("\n")
+            all_start = None
+            all_end = None
+            for i, line in enumerate(lines):
+                if "__all__" in line:
+                    all_start = i
+                if all_start is not None and line.strip() == "]":
+                    all_end = i
+                    break
+
+            if all_start is not None and all_end is not None:
+                for imp in new_imports:
+                    lines.insert(all_start, imp)
+                    all_start += 1
+                    all_end += 1
+                for entry in new_all_entries:
+                    lines.insert(all_end, entry)
+                    all_end += 1
+            else:
+                lines.extend(new_imports)
+
+            init_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            print(f"   ✅ apps/__init__.py (updated with {len(written)} display modules)")
+
+
 def write_package_files(
     output_dir: Path,
     api_metadata,
