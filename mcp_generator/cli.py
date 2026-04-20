@@ -269,8 +269,8 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         import copy
         import json as _json_overlay
 
-        from .overlay import apply_overlay, generate_overlay, load_overlay
         from .introspection import _load_openapi_spec
+        from .overlay import apply_overlay, generate_overlay, load_overlay
 
         raw_spec = _load_openapi_spec(openapi_spec)
         if raw_spec is None:

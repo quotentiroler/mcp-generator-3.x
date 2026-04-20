@@ -8,12 +8,12 @@ This script:
 4. Cleans up and reports results
 """
 
-import subprocess
-import time
-import sys
 import os
-import signal
+import subprocess
+import sys
+import time
 from pathlib import Path
+
 import httpx
 
 # Ensure UTF-8 encoding for Windows console
@@ -85,12 +85,12 @@ def run_tests(test_filter: str | None = None):
 
     if not server_script.exists():
         print(f"❌ Server script not found: {server_script}")
-        print(f"   Make sure you've generated the MCP server first.")
+        print("   Make sure you've generated the MCP server first.")
         return 1
 
     if not test_dir.exists():
         print(f"❌ Test directory not found: {test_dir}")
-        print(f"   Make sure you've generated the tests first.")
+        print("   Make sure you've generated the tests first.")
         return 1
 
     # Check if port is already in use and kill the process
@@ -125,12 +125,12 @@ def run_tests(test_filter: str | None = None):
                         time.sleep(1)  # Give it a moment to release
                 except Exception as e:
                     print(f"   ⚠️  Could not automatically free port: {e}")
-    except Exception as e:
+    except Exception:
         pass  # Port check failed, continue anyway
 
     # Start server
     print("\n" + "="*60)
-    print(f"Starting MCP Server")
+    print("Starting MCP Server")
     print(f"Server: {server_script.name}")
     print(f"Transport: HTTP, Port: {server_port}")
     print(f"Working directory: {generated_mcp_dir}")
@@ -161,11 +161,11 @@ def run_tests(test_filter: str | None = None):
         # Server failed to start - capture and show the output
         stdout, _ = server_process.communicate(timeout=5)
         print(f"❌ Server process exited immediately with code {server_process.returncode}")
-        print(f"   Check that the server is properly configured.")
+        print("   Check that the server is properly configured.")
         if stdout:
-            print(f"\n📋 Server output:")
+            print("\n📋 Server output:")
             print("   " + "\n   ".join(stdout.strip().split("\n")))
-        print(f"\n💡 Try running manually:")
+        print("\n💡 Try running manually:")
         print(f"   cd {generated_mcp_dir}")
         print(f"   uv run python {server_script.name} --transport http --port {server_port}")
         return 1
@@ -174,8 +174,8 @@ def run_tests(test_filter: str | None = None):
 
     # Create a background thread to consume server output to prevent blocking
     # but keep it available for debugging if needed
-    import threading
     import queue
+    import threading
 
     output_queue = queue.Queue()
 
@@ -195,7 +195,7 @@ def run_tests(test_filter: str | None = None):
     try:
         # Wait for server to be ready
         if not wait_for_server(server_url, timeout=30):
-            print(f"❌ Server failed to start within 30 seconds")
+            print("❌ Server failed to start within 30 seconds")
             print(f"   Server process status: {'running' if server_process.poll() is None else f'exited with code {server_process.returncode}'}")
 
             # Show recent server output for debugging
@@ -203,15 +203,15 @@ def run_tests(test_filter: str | None = None):
             try:
                 while not output_queue.empty():
                     recent_output.append(output_queue.get_nowait())
-            except:
+            except Exception:
                 pass
 
             if recent_output:
-                print(f"\n📋 Recent server output:")
+                print("\n📋 Recent server output:")
                 for line in recent_output[-10:]:  # Show last 10 lines
                     print(f"   {line}")
 
-            print(f"\n💡 Try running manually:")
+            print("\n💡 Try running manually:")
             print(f"   cd {generated_mcp_dir}")
             print(f"   uv run python {server_script.name} --transport http --port {server_port}")
             server_process.terminate()
@@ -338,8 +338,10 @@ def main():
 
     # Check dependencies
     try:
-        import pytest
-        import httpx
+        import importlib.util
+        for _dep in ("pytest", "httpx"):
+            if importlib.util.find_spec(_dep) is None:
+                raise ImportError(name=_dep)
     except ImportError as e:
         print(f"❌ Missing required dependency: {e.name}")
         print("\nInstall test dependencies:")

@@ -1,7 +1,8 @@
 """Tests for OpenAPI Overlay support."""
 
-import json
 import copy
+import json
+
 import pytest
 
 from mcp_generator.overlay import (
@@ -10,7 +11,6 @@ from mcp_generator.overlay import (
     generate_overlay,
     load_overlay,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -1,11 +1,9 @@
 """Tests for A2A agent generation."""
 
 import json
-import pytest
 
 from mcp_generator.a2a import generate_agent_card, render_a2a_adapter
 from mcp_generator.models import ApiMetadata, ModuleSpec
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

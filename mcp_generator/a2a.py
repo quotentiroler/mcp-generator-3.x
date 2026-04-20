@@ -9,7 +9,6 @@ See: https://github.com/a2aproject/A2A
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 
