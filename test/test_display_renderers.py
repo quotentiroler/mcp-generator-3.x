@@ -1,21 +1,16 @@
 """Tests for Phase 2: response schema extraction and display tool generation."""
 
-import copy
 
-import pytest
 
+from mcp_generator.display_renderers import (
+    _table_columns_for_fields,
+    _tool_name_for_endpoint,
+    render_display_module,
+)
 from mcp_generator.introspection import (
     _extract_response_schema,
     _parse_schema_fields,
     _resolve_ref,
-    get_display_endpoints,
-)
-from mcp_generator.display_renderers import (
-    _tool_name_for_endpoint,
-    _table_columns_for_fields,
-    _render_detail_tool,
-    _render_table_tool,
-    render_display_module,
 )
 from mcp_generator.models import DisplayEndpoint, ResponseField, ResponseSchema
 

@@ -333,8 +333,8 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                 print("   Skipping API-specific display tool generation.")
             else:
                 print("\n🖼️  Generating API-specific display tools from response schemas...")
-                from .introspection import get_display_endpoints
                 from .display_renderers import render_display_module
+                from .introspection import get_display_endpoints
                 from .writers import write_display_modules
 
                 display_endpoints = get_display_endpoints(src_dir)

@@ -7,9 +7,8 @@ that render API responses as interactive Prefab UI components.
 
 from __future__ import annotations
 
-from .models import DisplayEndpoint, ResponseField, ResponseSchema
+from .models import DisplayEndpoint, ResponseField
 from .utils import camel_to_snake
-
 
 # ---------------------------------------------------------------------------
 # Badge variant mapping for common status/enum patterns
@@ -170,7 +169,7 @@ def _render_detail_fields(fields: list[ResponseField], indent: int = 16) -> str:
     pad = " " * indent
     lines = []
     shown = 0
-    for i, f in enumerate(fields):
+    for _i, f in enumerate(fields):
         if f.is_array or f.is_nested_object:
             continue
         if shown > 0:

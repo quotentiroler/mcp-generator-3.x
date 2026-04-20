@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 # Conditional Prefab imports — graceful fallback when prefab-ui is not installed
 # ---------------------------------------------------------------------------
 try:
+    from prefab_ui.actions import ShowToast
+    from prefab_ui.actions.mcp import CallTool
     from prefab_ui.app import PrefabApp
     from prefab_ui.components import (
         Badge,
@@ -31,12 +33,10 @@ try:
         Column,
         DataTable,
         DataTableColumn,
-        ForEach,
         Form,
         Grid,
         Heading,
         Input,
-        Metric,
         Muted,
         Row,
         Separator,
@@ -49,10 +49,6 @@ try:
         LineChart,
         PieChart,
     )
-    from prefab_ui.actions import SetState, ShowToast
-    from prefab_ui.actions.mcp import CallTool
-    from prefab_ui.rx import RESULT
-
     PREFAB_AVAILABLE = True
 except ImportError:
     PREFAB_AVAILABLE = False
