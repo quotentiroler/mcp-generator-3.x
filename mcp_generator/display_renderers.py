@@ -352,6 +352,7 @@ DO NOT EDIT MANUALLY — regenerate using: generate-mcp --enable-apps --generate
 """
 
 import logging
+import os
 from typing import Any
 import sys
 from pathlib import Path
@@ -363,8 +364,7 @@ generated_path = Path(__file__).parent.parent.parent / "generated_openapi"
 if str(generated_path) not in sys.path:
     sys.path.insert(0, str(generated_path))
 
-from openapi_client import ApiClient, ApiException, {api_class_name}
-from middleware.authentication import get_api_client
+from openapi_client import ApiClient, ApiException, Configuration, {api_class_name}
 
 logger = logging.getLogger(__name__)
 
@@ -412,8 +412,15 @@ def _call_api(method_name: str, api_instance, **kwargs):
 
     init_code = f"""
 def _get_api():
-    \"\"\"Get an authenticated API instance.\"\"\"
-    client = get_api_client()
+    \"\"\"Get an API instance using environment-based auth.\"\"\"
+    config = Configuration()
+    base_url = os.environ.get("BACKEND_BASE_URL", "")
+    if base_url:
+        config.host = base_url
+    token = os.environ.get("BACKEND_API_TOKEN", "")
+    if token:
+        config.access_token = token
+    client = ApiClient(config)
     return {api_class_name}(client)
 
 {api_var_name} = _get_api()
