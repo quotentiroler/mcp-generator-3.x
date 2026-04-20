@@ -11,6 +11,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def get_registry_path() -> Path:
@@ -42,17 +43,17 @@ def load_local_registry() -> dict:
 
     try:
         with open(registry_path, encoding="utf-8") as f:
-            return json.load(f)
+            return dict(json.load(f))
     except Exception:
         return {}
 
 
-def list_servers():
+def list_servers() -> dict[str, Any]:
     """List all registered MCP servers from local registry."""
     return load_local_registry()
 
 
-def main():
+def main() -> int:
     """Main entry point for run-mcp CLI."""
     parser = argparse.ArgumentParser(
         description="Run a registered MCP server",
@@ -155,6 +156,7 @@ def main():
 
         # Run the server's main function
         server_main()
+        return 0
 
     except Exception as e:
         print(f"❌ Error loading/running server '{args.server_name}': {e}")

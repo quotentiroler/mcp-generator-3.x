@@ -137,3 +137,47 @@ class ResourceSpec:
     query_params: list[ParameterInfo]
     description: str
     mime_type: str = "application/json"
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Response schema models for generated display tools
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ResponseField:
+    """A single field in an API response schema."""
+
+    name: str
+    python_type: str  # e.g. "str", "int", "bool", "float"
+    description: str = ""
+    is_enum: bool = False
+    enum_values: list[str] = field(default_factory=list)
+    is_nested_object: bool = False
+    is_array: bool = False
+    nested_fields: list["ResponseField"] = field(default_factory=list)
+    format: str = ""  # OpenAPI format hint (date-time, email, uri, etc.)
+
+
+@dataclass
+class ResponseSchema:
+    """Parsed response schema for an API endpoint."""
+
+    fields: list[ResponseField] = field(default_factory=list)
+    is_array: bool = False  # top-level is a list of objects
+    is_object: bool = False  # top-level is a single object
+    schema_name: str = ""  # e.g. "Pet", "Order" (from $ref name)
+
+
+@dataclass
+class DisplayEndpoint:
+    """An API endpoint with enough context to generate a display tool."""
+
+    operation_id: str
+    path: str
+    http_method: str  # always "get" for display tools
+    summary: str
+    tag: str
+    path_params: list[dict[str, Any]]
+    query_params: list[dict[str, Any]]
+    response_schema: ResponseSchema | None = None

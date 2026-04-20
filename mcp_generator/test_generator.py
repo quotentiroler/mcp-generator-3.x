@@ -42,14 +42,14 @@ def _load_openapi_spec() -> dict:
                 try:
                     with open(openapi_path, encoding="utf-8") as f:
                         # Try JSON first
-                        return json.load(f)
+                        return dict(json.load(f))
                 except json.JSONDecodeError:
                     # Try YAML
                     try:
                         import yaml
 
                         with open(openapi_path, encoding="utf-8") as f:
-                            return yaml.safe_load(f)
+                            return dict(yaml.safe_load(f))
                     except Exception:
                         pass
 
@@ -65,7 +65,7 @@ def _extract_oauth_flows_from_spec(openapi_spec: dict) -> set[str]:
     Returns:
         Set of flow names: 'clientCredentials', 'authorizationCode', 'password', 'implicit'
     """
-    flows = set()
+    flows: set[str] = set()
 
     if "components" not in openapi_spec or "securitySchemes" not in openapi_spec["components"]:
         return flows

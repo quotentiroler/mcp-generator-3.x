@@ -20,6 +20,9 @@ telemetry = [
     "opentelemetry-sdk>=1.20.0",
     "opentelemetry-exporter-otlp>=1.20.0",
 ]
+apps = [
+    "prefab-ui>=0.17.0",
+]
 
 [project.scripts]
 {{script_name}} = "{{main_module}}:main"

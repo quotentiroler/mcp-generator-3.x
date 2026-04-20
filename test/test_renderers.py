@@ -21,7 +21,7 @@ class TestRenderPyprojectTemplate:
         content = render_pyproject_template(
             api_metadata, security_config_none, "test_api", total_tools=5
         )
-        assert "fastmcp>=3.1.0,<4.0.0" in content
+        assert "fastmcp>=3.2.0,<4.0.0" in content
 
     def test_does_not_contain_fastmcp_2x_dep(
         self, api_metadata: ApiMetadata, security_config_none: SecurityConfig
@@ -66,6 +66,30 @@ class TestRenderPyprojectTemplate:
             api_metadata, security_config_none, "test_api", total_tools=1, enable_storage=True
         )
         assert "cryptography" in content
+
+    def test_apps_dep_when_enabled(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig
+    ) -> None:
+        content = render_pyproject_template(
+            api_metadata, security_config_none, "test_api", total_tools=1, enable_apps=True
+        )
+        assert "fastmcp[apps]>=3.2.0,<4.0.0" in content
+
+    def test_apps_dep_not_present_when_disabled(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig
+    ) -> None:
+        content = render_pyproject_template(
+            api_metadata, security_config_none, "test_api", total_tools=1
+        )
+        assert "fastmcp[apps]" not in content
+
+    def test_apps_package_included_when_enabled(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig
+    ) -> None:
+        content = render_pyproject_template(
+            api_metadata, security_config_none, "test_api", total_tools=1, enable_apps=True
+        )
+        assert "'apps'" in content
 
 
 # ---------------------------------------------------------------------------
@@ -342,6 +366,70 @@ class TestRenderFastmcpTemplate:
         parsed = json.loads(content)
         assert parsed["middleware"]["config"]["authentication"]["validate_tokens"] is False
         assert parsed["features"]["oauth_proxy"]["enabled"] is False
+
+    # --- MCP Apps feature ---
+
+    def test_apps_section_present_by_default(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig, sample_modules: dict
+    ) -> None:
+        """Apps section should be present in features by default."""
+        import json
+
+        content = render_fastmcp_template(
+            api_metadata, security_config_none, sample_modules, total_tools=5, server_name="test"
+        )
+        features = json.loads(content)["features"]
+        assert "apps" in features
+        apps = features["apps"]
+        assert "enabled" in apps
+        assert "display_tools" in apps
+        assert "generative_ui" in apps
+
+    def test_apps_disabled_by_default(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig, sample_modules: dict
+    ) -> None:
+        """Apps should be disabled when enable_apps is not set."""
+        import json
+
+        content = render_fastmcp_template(
+            api_metadata, security_config_none, sample_modules, total_tools=5, server_name="test"
+        )
+        apps = json.loads(content)["features"]["apps"]
+        assert apps["enabled"] is False
+
+    def test_apps_enabled_when_flag_set(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig, sample_modules: dict
+    ) -> None:
+        """Apps should be enabled when enable_apps=True."""
+        import json
+
+        content = render_fastmcp_template(
+            api_metadata,
+            security_config_none,
+            sample_modules,
+            total_tools=5,
+            server_name="test",
+            enable_apps=True,
+        )
+        apps = json.loads(content)["features"]["apps"]
+        assert apps["enabled"] is True
+
+    def test_apps_generative_ui_default_false(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig, sample_modules: dict
+    ) -> None:
+        """generative_ui should default to false even when apps is enabled."""
+        import json
+
+        content = render_fastmcp_template(
+            api_metadata,
+            security_config_none,
+            sample_modules,
+            total_tools=5,
+            server_name="test",
+            enable_apps=True,
+        )
+        apps = json.loads(content)["features"]["apps"]
+        assert apps["generative_ui"] is False
 
 
 # ---------------------------------------------------------------------------

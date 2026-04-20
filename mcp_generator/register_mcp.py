@@ -47,7 +47,7 @@ def load_registry() -> dict:
 
     try:
         with open(registry_path, encoding="utf-8") as f:
-            return json.load(f)
+            return dict(json.load(f))
     except Exception as e:
         print(f"⚠️  Warning: Could not load registry: {e}")
         return {}
@@ -230,7 +230,7 @@ def export_server(server_name: str, output_file: str | None = None) -> None:
         print(json.dumps(server_json, indent=2))
 
 
-def main():
+def main() -> None:
     """Main entry point for register-mcp CLI."""
     parser = argparse.ArgumentParser(
         description="Register local MCP servers for use with run-mcp",

@@ -10,7 +10,15 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .models import ApiMetadata, OAuthConfig, OAuthFlowConfig, SecurityConfig
+from .models import (
+    ApiMetadata,
+    DisplayEndpoint,
+    OAuthConfig,
+    OAuthFlowConfig,
+    ResponseField,
+    ResponseSchema,
+    SecurityConfig,
+)
 from .utils import camel_to_snake
 
 
@@ -70,14 +78,14 @@ def _load_openapi_spec(spec_path: Path) -> dict[str, Any] | None:
     try:
         # Try loading as JSON first
         with open(spec_path, encoding="utf-8") as f:
-            return json.load(f)
+            return dict(json.load(f))
     except json.JSONDecodeError:
         # If JSON fails, try YAML
         try:
             import yaml
 
             with open(spec_path, encoding="utf-8") as f:
-                return yaml.safe_load(f)
+                return dict(yaml.safe_load(f))
         except ImportError:
             print("   ⚠️  Could not load YAML file (PyYAML not installed)")
             print("   💡 Install with: pip install pyyaml")
@@ -356,7 +364,7 @@ def get_resource_endpoints(base_dir: Path | None = None) -> dict[str, list[dict[
     # Enrich tags before grouping resources
     enrich_spec_tags(spec)
 
-    resources_by_tag = {}
+    resources_by_tag: dict[str, list[dict[str, Any]]] = {}
 
     for path, path_item in spec.get("paths", {}).items():
         # Only process GET methods
@@ -411,3 +419,251 @@ def get_resource_endpoints(base_dir: Path | None = None) -> dict[str, list[dict[
         resources_by_tag[primary_tag].append(resource_spec)
 
     return resources_by_tag
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Response schema extraction for generated display tools
+# ---------------------------------------------------------------------------
+
+_OPENAPI_TYPE_MAP: dict[str, str] = {
+    "string": "str",
+    "integer": "int",
+    "number": "float",
+    "boolean": "bool",
+    "array": "list",
+    "object": "dict",
+}
+
+
+def _resolve_ref(spec: dict[str, Any], ref: str) -> dict[str, Any]:
+    """Resolve a $ref pointer (e.g. '#/components/schemas/Pet') within the spec."""
+    parts = ref.lstrip("#/").split("/")
+    node: Any = spec
+    for part in parts:
+        if isinstance(node, dict):
+            node = node.get(part, {})
+        else:
+            return {}
+    return node if isinstance(node, dict) else {}
+
+
+def _ref_name(ref: str) -> str:
+    """Extract the schema name from a $ref string (e.g. 'Pet' from '#/components/schemas/Pet')."""
+    return ref.rsplit("/", 1)[-1] if "/" in ref else ref
+
+
+def _parse_schema_fields(
+    schema: dict[str, Any],
+    spec: dict[str, Any],
+    depth: int = 0,
+    max_depth: int = 3,
+    visited: set[str] | None = None,
+) -> list[ResponseField]:
+    """Recursively parse an object schema's properties into ResponseField list.
+
+    Handles $ref resolution, nested objects, arrays, and enums.
+    Stops at max_depth to prevent infinite recursion from circular $refs.
+    """
+    if depth >= max_depth:
+        return []
+    if visited is None:
+        visited = set()
+
+    # Resolve $ref at the schema level
+    if "$ref" in schema:
+        ref = schema["$ref"]
+        if ref in visited:
+            return []  # Break circular reference
+        visited = visited | {ref}
+        schema = _resolve_ref(spec, ref)
+
+    # Handle allOf / oneOf / anyOf — merge or pick first
+    if "allOf" in schema:
+        merged: dict[str, Any] = {}
+        for sub in schema["allOf"]:
+            resolved = _resolve_ref(spec, sub["$ref"]) if "$ref" in sub else sub
+            merged.update(resolved.get("properties", {}))
+        schema = {"type": "object", "properties": merged}
+
+    for combiner in ("oneOf", "anyOf"):
+        if combiner in schema and schema[combiner]:
+            first = schema[combiner][0]
+            schema = _resolve_ref(spec, first["$ref"]) if "$ref" in first else first
+            break
+
+    properties = schema.get("properties", {})
+    fields: list[ResponseField] = []
+
+    for prop_name, prop_schema in properties.items():
+        # Resolve property-level $ref
+        resolved_prop = prop_schema
+        if "$ref" in prop_schema:
+            ref = prop_schema["$ref"]
+            if ref in visited:
+                continue
+            resolved_prop = _resolve_ref(spec, ref)
+
+        prop_type = resolved_prop.get("type", "string")
+        fmt = resolved_prop.get("format", "")
+
+        # Enum
+        enum_values = resolved_prop.get("enum", [])
+        is_enum = bool(enum_values)
+
+        # Nested object
+        is_nested_object = prop_type == "object" and "properties" in resolved_prop
+        nested_fields: list[ResponseField] = []
+        if is_nested_object or "$ref" in prop_schema:
+            nested_fields = _parse_schema_fields(resolved_prop, spec, depth + 1, max_depth, visited)
+            is_nested_object = bool(nested_fields)
+
+        # Array with items
+        is_array = prop_type == "array"
+        if is_array and "items" in resolved_prop:
+            items_schema = resolved_prop["items"]
+            if "$ref" in items_schema or items_schema.get("type") == "object":
+                nested_fields = _parse_schema_fields(
+                    items_schema, spec, depth + 1, max_depth, visited
+                )
+
+        fields.append(
+            ResponseField(
+                name=prop_name,
+                python_type=_OPENAPI_TYPE_MAP.get(prop_type, "str"),
+                description=resolved_prop.get("description", ""),
+                is_enum=is_enum,
+                enum_values=[str(v) for v in enum_values],
+                is_nested_object=is_nested_object,
+                is_array=is_array,
+                nested_fields=nested_fields,
+                format=fmt,
+            )
+        )
+
+    return fields
+
+
+def _extract_response_schema(
+    responses: dict[str, Any], spec: dict[str, Any]
+) -> ResponseSchema | None:
+    """Extract and parse the success response schema from an endpoint's responses dict."""
+    # Find the success response (200, 201, or default)
+    success_resp = responses.get("200", responses.get("201", responses.get("default")))
+    if not success_resp:
+        return None
+
+    content = success_resp.get("content", {})
+    json_content = content.get("application/json", content.get("*/*", {}))
+    schema = json_content.get("schema", {})
+
+    if not schema:
+        return None
+
+    # Resolve top-level $ref
+    schema_name = ""
+    if "$ref" in schema:
+        schema_name = _ref_name(schema["$ref"])
+        schema = _resolve_ref(spec, schema["$ref"])
+
+    top_type = schema.get("type", "")
+
+    # Skip: additionalProperties-only (dynamic maps), scalars
+    if top_type in ("string", "number", "integer", "boolean"):
+        return None
+    if top_type == "object" and "additionalProperties" in schema and "properties" not in schema:
+        return None
+
+    # Array of objects
+    if top_type == "array":
+        items = schema.get("items", {})
+        if "$ref" in items:
+            schema_name = schema_name or _ref_name(items["$ref"])
+        fields = _parse_schema_fields(items, spec)
+        if not fields:
+            return None
+        return ResponseSchema(fields=fields, is_array=True, schema_name=schema_name)
+
+    # Single object
+    fields = _parse_schema_fields(schema, spec)
+    if not fields:
+        return None
+    return ResponseSchema(fields=fields, is_object=True, schema_name=schema_name)
+
+
+def get_display_endpoints(base_dir: Path | None = None) -> dict[str, list[DisplayEndpoint]]:
+    """Extract GET endpoints with parsed response schemas for display tool generation.
+
+    Returns:
+        Dictionary mapping tag names to lists of DisplayEndpoint with resolved schemas.
+    """
+    if base_dir is None:
+        base_dir = Path.cwd()
+
+    openapi_path = _find_openapi_spec(base_dir)
+    if not openapi_path or not openapi_path.exists():
+        return {}
+
+    spec = _load_openapi_spec(openapi_path)
+    if not spec or "paths" not in spec:
+        return {}
+
+    enrich_spec_tags(spec)
+    endpoints_by_tag: dict[str, list[DisplayEndpoint]] = {}
+
+    for path, path_item in spec.get("paths", {}).items():
+        if "get" not in path_item:
+            continue
+
+        get_op = path_item["get"]
+        operation_id = get_op.get("operationId")
+        if not operation_id:
+            continue
+
+        responses = get_op.get("responses", {})
+        response_schema = _extract_response_schema(responses, spec)
+
+        # Skip endpoints without parseable response schemas
+        if response_schema is None:
+            continue
+
+        tags = get_op.get("tags", ["default"])
+        primary_tag = tags[0] if tags else "default"
+
+        path_params = []
+        query_params = []
+        for param in get_op.get("parameters", []):
+            p_in = param.get("in")
+            if p_in == "path":
+                path_params.append(
+                    {
+                        "name": param.get("name"),
+                        "schema": param.get("schema", {}),
+                        "required": True,
+                    }
+                )
+            elif p_in == "query":
+                query_params.append(
+                    {
+                        "name": param.get("name"),
+                        "required": param.get("required", False),
+                        "schema": param.get("schema", {}),
+                        "description": param.get("description", ""),
+                    }
+                )
+
+        endpoint = DisplayEndpoint(
+            operation_id=operation_id,
+            path=path,
+            http_method="get",
+            summary=get_op.get("summary", ""),
+            tag=primary_tag,
+            path_params=path_params,
+            query_params=query_params,
+            response_schema=response_schema,
+        )
+
+        if primary_tag not in endpoints_by_tag:
+            endpoints_by_tag[primary_tag] = []
+        endpoints_by_tag[primary_tag].append(endpoint)
+
+    return endpoints_by_tag

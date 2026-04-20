@@ -1,6 +1,6 @@
 # Examples
 
-This directory contains example OpenAPI specifications and configurations to help you get started with MCP Generator 3.1.
+This directory contains example OpenAPI specifications and configurations to help you get started with MCP Generator 3.x.
 
 ## 📚 Available Examples
 

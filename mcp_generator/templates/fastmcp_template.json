@@ -88,6 +88,12 @@
       "enabled": false,
       "service_name": "{{service_name}}",
       "description": "OpenTelemetry tracing with MCP semantic conventions"
+    },
+    "apps": {
+      "enabled": false,
+      "display_tools": true,
+      "generative_ui": false,
+      "description": "MCP Apps: interactive UI display tools (tables, charts, forms) and optional GenerativeUI"
     }
   }
 }

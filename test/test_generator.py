@@ -1,5 +1,7 @@
 """Tests for mcp_generator.generator — composition server generation."""
 
+from pathlib import Path
+
 import pytest
 
 from mcp_generator.generator import generate_main_composition_server
@@ -423,3 +425,97 @@ class TestGenerateMainCompositionServer:
         proxy_pos = code.index("_oauth_proxy_cfg")
         jwt_pos = code.index("jwt_verifier = create_jwt_verifier()")
         assert proxy_pos > jwt_pos
+
+    # --- MCP Apps (--enable-apps) ---
+
+    def test_apps_disabled_by_default(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig, _two_modules: dict
+    ) -> None:
+        """Without enable_apps, display tools import should not be present."""
+        code = generate_main_composition_server(_two_modules, api_metadata, security_config_none)
+        assert "display_tools" not in code
+
+    def test_apps_imports_display_tools(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig, _two_modules: dict
+    ) -> None:
+        """enable_apps=True should import display_tools_mcp from apps package."""
+        code = generate_main_composition_server(
+            _two_modules, api_metadata, security_config_none, enable_apps=True
+        )
+        assert "from apps.display_tools import mcp as display_tools_mcp" in code
+
+    def test_apps_mounts_display_namespace(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig, _two_modules: dict
+    ) -> None:
+        """enable_apps=True should mount display tools under 'display' namespace."""
+        code = generate_main_composition_server(
+            _two_modules, api_metadata, security_config_none, enable_apps=True
+        )
+        assert 'mount(display_tools_mcp, namespace="display")' in code
+
+    def test_apps_generative_ui_conditional(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig, _two_modules: dict
+    ) -> None:
+        """GenerativeUI import should be conditional on fastmcp.json config."""
+        code = generate_main_composition_server(
+            _two_modules, api_metadata, security_config_none, enable_apps=True
+        )
+        assert "GenerativeUI" in code
+        assert "_generative_ui_enabled" in code
+        assert "add_provider" in code
+
+    def test_apps_generative_ui_import_fallback(
+        self, api_metadata: ApiMetadata, security_config_none: SecurityConfig, _two_modules: dict
+    ) -> None:
+        """GenerativeUI import should have ImportError fallback."""
+        code = generate_main_composition_server(
+            _two_modules, api_metadata, security_config_none, enable_apps=True
+        )
+        assert "ImportError" in code
+        assert "_generative_ui_provider = None" in code
+
+
+# ---------------------------------------------------------------------------
+# write_apps_package
+# ---------------------------------------------------------------------------
+
+
+class TestWriteAppsPackage:
+    """Test that write_apps_package creates the expected file structure."""
+
+    def test_creates_apps_directory(self, tmp_path: Path) -> None:
+        from mcp_generator.writers import write_apps_package
+
+        write_apps_package(tmp_path)
+        assert (tmp_path / "apps").is_dir()
+
+    def test_creates_display_tools(self, tmp_path: Path) -> None:
+        from mcp_generator.writers import write_apps_package
+
+        write_apps_package(tmp_path)
+        dt = tmp_path / "apps" / "display_tools.py"
+        assert dt.exists()
+        content = dt.read_text(encoding="utf-8")
+        assert "show_table" in content
+        assert "show_detail" in content
+        assert "show_chart" in content
+        assert "show_metrics" in content
+        assert "show_timeline" in content
+        assert "show_progress" in content
+
+    def test_creates_init_py(self, tmp_path: Path) -> None:
+        from mcp_generator.writers import write_apps_package
+
+        write_apps_package(tmp_path)
+        init = tmp_path / "apps" / "__init__.py"
+        assert init.exists()
+        content = init.read_text(encoding="utf-8")
+        assert "display_tools_mcp" in content
+
+    def test_idempotent(self, tmp_path: Path) -> None:
+        """Running write_apps_package twice should not error."""
+        from mcp_generator.writers import write_apps_package
+
+        write_apps_package(tmp_path)
+        write_apps_package(tmp_path)
+        assert (tmp_path / "apps" / "display_tools.py").exists()

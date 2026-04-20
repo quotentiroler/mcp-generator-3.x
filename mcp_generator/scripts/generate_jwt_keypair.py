@@ -77,8 +77,8 @@ def generate_keypair(output_dir: Path, kid: str = "ai-assistant-key-1") -> tuple
 
     # Write JWKS JSON
     jwks_path = output_dir / "ai_assistant_jwks.json"
-    with open(jwks_path, "w") as f:
-        json.dump(jwks, f, indent=2)
+    with open(jwks_path, "w", encoding="utf-8") as jf:
+        json.dump(jwks, jf, indent=2)
 
     print(f"✅ Private key saved to: {private_key_path}")
     print(f"✅ Public key saved to: {public_key_path}")

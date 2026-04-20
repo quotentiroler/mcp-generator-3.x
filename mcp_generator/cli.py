@@ -7,6 +7,7 @@ Handles command-line interface, logging setup, and orchestrates the generation p
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 from .generator import generate_all, generate_main_composition_server
 from .templates.authentication import generate_authentication_middleware
@@ -40,19 +41,19 @@ from .writers import (
 )
 
 
-def setup_utf8_console():
+def setup_utf8_console() -> None:
     """Configure UTF-8 encoding for console output (fixes emoji display on Windows)."""
     if sys.platform == "win32":
         # Set console to UTF-8 mode on Windows
         os.system("chcp 65001 > nul 2>&1")
         # Reconfigure stdout encoding if available (Python 3.7+)
         try:
-            sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+            sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
         except (AttributeError, OSError):
             pass  # Not available or failed, continue anyway
 
 
-def print_metadata_summary(api_metadata, security_config):
+def print_metadata_summary(api_metadata: Any, security_config: Any) -> None:
     """Print API metadata and security configuration summary."""
     print("\n📋 API Metadata:")
     print(f"   Title: {api_metadata.title}")
@@ -82,7 +83,7 @@ def print_metadata_summary(api_metadata, security_config):
         print(f"   Available scopes: {len(oauth.all_scopes)}")
 
 
-def main():
+def main() -> None:
     """Main CLI entry point."""
     import argparse
 
@@ -90,7 +91,7 @@ def main():
 
     # Parse command-line arguments
     parser = argparse.ArgumentParser(
-        description="MCP Generator 3.1 - OpenAPI to FastMCP 3.x Server Generator",
+        description="MCP Generator 3.x - OpenAPI to FastMCP 3.x Server Generator",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -106,11 +107,15 @@ Examples:
   # With optional features
   generate-mcp --enable-storage --enable-caching
   generate-mcp --enable-resources
+  generate-mcp --enable-apps
+  generate-mcp --enable-apps --generate-ui
 
 Optional Features (disabled by default for simplicity):
   --enable-storage    Persistent storage for OAuth tokens & state
   --enable-caching    Response caching (reduces API calls)
   --enable-resources  MCP resources from GET endpoints
+  --enable-apps       MCP Apps with interactive UI display tools
+  --generate-ui       API-specific display tools from response schemas (requires --enable-apps)
 
 Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         """,
@@ -151,10 +156,24 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         help="Generate MCP resource templates from GET endpoints (exposes API data as resources)",
     )
 
+    parser.add_argument(
+        "--enable-apps",
+        action="store_true",
+        default=False,
+        help="Generate MCP Apps display tools (interactive tables, charts, forms) and optional GenerativeUI",
+    )
+
+    parser.add_argument(
+        "--generate-ui",
+        action="store_true",
+        default=False,
+        help="Generate API-specific display tools from OpenAPI response schemas (requires --enable-apps)",
+    )
+
     args = parser.parse_args()
 
     print("=" * 80)
-    print("MCP Generator 3.1 - OpenAPI to FastMCP 3.x Server Generator")
+    print("MCP Generator 3.x - OpenAPI to FastMCP 3.x Server Generator")
     print("=" * 80)
 
     # Use current working directory for all operations
@@ -301,6 +320,40 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                 print("   ✅ cache.py")
                 print("   💡 Decorate expensive tools with @cache.cached(ttl=600)")
 
+        # Generate MCP Apps display tools if requested
+        if args.enable_apps:
+            print("\n🎨 Generating MCP Apps display tools...")
+            from .writers import write_apps_package
+
+            write_apps_package(output_dir)
+
+        # Generate API-specific display tools from response schemas
+        display_module_count = 0
+        if args.generate_ui:
+            if not args.enable_apps:
+                print("\n⚠️  Warning: --generate-ui requires --enable-apps")
+                print("   Skipping API-specific display tool generation.")
+            else:
+                print("\n🖼️  Generating API-specific display tools from response schemas...")
+                from .display_renderers import render_display_module
+                from .introspection import get_display_endpoints
+                from .writers import write_display_modules
+
+                display_endpoints = get_display_endpoints(src_dir)
+                display_modules = {}
+                for tag, endpoints in display_endpoints.items():
+                    api_var = f"{tag}_api"
+                    api_class_name = tag.title().replace("_", "") + "Api"
+                    code = render_display_module(tag, endpoints, api_var, api_class_name)
+                    if code:
+                        display_modules[tag] = code
+                        display_module_count = len(display_modules)
+
+                if display_modules:
+                    write_display_modules(display_modules, output_dir / "apps")
+                else:
+                    print("   ℹ️  No API endpoints with parseable response schemas found.")
+
         # Generate and write main composition server
         print("\n🔗 Generating main composition server...")
 
@@ -323,6 +376,10 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
             api_metadata,
             security_config,
             composition_strategy=composition_strategy,
+            enable_apps=args.enable_apps,
+            display_tags=list(display_modules.keys())
+            if args.generate_ui and args.enable_apps and display_module_count > 0
+            else None,
         )
         from .utils import sanitize_server_name
 
@@ -333,7 +390,13 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         # Generate package files (README, pyproject.toml, __init__.py)
         print("\n📦 Generating package metadata files...")
         write_package_files(
-            output_dir, api_metadata, security_config, modules, total_tools, args.enable_storage
+            output_dir,
+            api_metadata,
+            security_config,
+            modules,
+            total_tools,
+            args.enable_storage,
+            args.enable_apps,
         )
 
         # Generate test files (conditionally include auth tests)
@@ -368,14 +431,14 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
             print("   • Resource template tests")
             resource_test_code = generate_resource_tests(modules, api_metadata, security_config)
 
-        # Always generate transform tests (FastMCP 3.1 features)
-        print("   • FastMCP 3.1 transform tests")
+        # Always generate transform tests (FastMCP 3.x features)
+        print("   • FastMCP 3.x transform tests")
         transform_test_code = generate_transform_tests(api_metadata, security_config, modules)
 
         # Generate multi-auth tests if auth is configured
         multi_auth_test_code = None
         if security_config.has_authentication():
-            print("   • FastMCP 3.1 multi-auth tests")
+            print("   • FastMCP 3.x multi-auth tests")
             multi_auth_test_code = generate_multi_auth_tests(api_metadata, security_config, modules)
 
         # Always generate in-process integration tests and schema validation
@@ -459,6 +522,15 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
             print("   • Enabled: Response caching with configurable TTL")
         if args.enable_resources and total_resources > 0:
             print("   • Enabled: MCP resources for data access")
+        if args.enable_apps:
+            print(
+                "   • Enabled: MCP Apps display tools (show_table, show_detail, show_chart, show_form, show_comparison)"
+            )
+            if args.generate_ui and display_module_count > 0:
+                print(
+                    f"   • Enabled: {display_module_count} API-specific display modules (tables, detail cards)"
+                )
+            print("   💡 Install UI deps: pip install 'fastmcp[apps]'")
 
         print("\n📂 Output Location:")
         print(f"   {output_dir.relative_to(src_dir)}/")
@@ -506,6 +578,10 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
             )
         if not args.enable_resources:
             disabled_features.append(("--enable-resources", "Expose API data as MCP resources"))
+        if not args.enable_apps:
+            disabled_features.append(
+                ("--enable-apps", "Interactive UI display tools (tables, charts, forms)")
+            )
 
         if disabled_features:
             print("\n💡 Optional Features (not enabled):")

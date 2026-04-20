@@ -63,7 +63,7 @@ def wait_for_server(url: str, timeout: int = 30) -> bool:
     return False
 
 
-def run_tests(test_filter: str | None = None):
+def run_tests(test_filter: str | None = None) -> int:
     """Run the MCP server and execute tests.
 
     Args:
@@ -98,9 +98,9 @@ def run_tests(test_filter: str | None = None):
 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = sock.connect_ex(("localhost", int(server_port)))
+        port_check = sock.connect_ex(("localhost", int(server_port)))
         sock.close()
-        if result == 0:
+        if port_check == 0:
             print(f"⚠️  Port {server_port} is already in use. Attempting to free it...")
             if sys.platform == "win32":
                 # On Windows, try to find and kill the process using the port
@@ -191,11 +191,12 @@ def run_tests(test_filter: str | None = None):
     import queue
     import threading
 
-    output_queue = queue.Queue()
+    output_queue: queue.Queue[str] = queue.Queue()
 
-    def consume_output():
+    def consume_output() -> None:
         """Consume server output in background to prevent pipe blocking."""
         try:
+            assert server_process.stdout is not None
             for line in iter(server_process.stdout.readline, ""):
                 if line:
                     output_queue.put(line.strip())
@@ -318,7 +319,7 @@ def run_tests(test_filter: str | None = None):
                 pass  # Best effort cleanup
 
 
-def main():
+def main() -> int:
     """Main entry point."""
     import argparse
 

@@ -1,4 +1,4 @@
-# MCP Generator 3.1
+# MCP Generator 3.x
 
 **🚀 OpenAPI to FastMCP 3.x Server Generator**
 
@@ -14,7 +14,7 @@ Transform any OpenAPI specification into a production-ready Model Context Protoc
 
 ## 🎯 Overview
 
-MCP Generator 3.1 is an advanced code generator that automatically creates FastMCP 3.x servers from OpenAPI 3.0.x/3.1.x specifications. It bridges REST APIs and AI agents by generating fully-functional MCP tools that AI assistants like Claude, ChatGPT, and others can use to interact with your APIs.
+MCP Generator 3.x is an advanced code generator that automatically creates FastMCP 3.x servers from OpenAPI 3.0.x/3.1.x specifications. It bridges REST APIs and AI agents by generating fully-functional MCP tools that AI assistants like Claude, ChatGPT, and others can use to interact with your APIs.
 
 ### Supported OpenAPI Versions
 
@@ -24,9 +24,9 @@ MCP Generator 3.1 is an advanced code generator that automatically creates FastM
 
 > **Note**: Both JSON and YAML formats are supported. The generator includes a pure Python OpenAPI client generator — no Java or Node.js required.
 
-## 🏆 Why MCP Generator 3.1?
+## 🏆 Why MCP Generator 3.x?
 
-| Feature                     | MCP Generator 3.1                          | Typical Generators         |
+| Feature                     | MCP Generator 3.x                          | Typical Generators         |
 | --------------------------- | ------------------------------------------ | -------------------------- |
 | **Architecture**      | Modular, composable sub-servers            | Monolithic single file     |
 | **Authentication**    | JWT validation with JWKS, OAuth2 flows     | Basic token passing        |
@@ -37,40 +37,45 @@ MCP Generator 3.1 is an advanced code generator that automatically creates FastM
 | **Observability**     | Timing, logging, error handling middleware | Basic logging              |
 | **Tag Discovery**     | Auto-discovers undeclared API tags          | Manual tag mapping         |
 | **Event Store**       | Resumable SSE with event persistence       | Simple SSE                 |
+| **MCP Apps**          | Interactive UI display tools (tables, charts, forms) | None                 |
 | **Production Ready**  | ✅ Yes                                     | ⚠️ Often prototypes      |
 
 ### Competitive Comparison
 
-How MCP Generator 3.1 stacks up against every other OpenAPI-to-MCP project on GitHub:
+How MCP Generator 3.x stacks up against every other OpenAPI-to-MCP project on GitHub (updated April 2026):
 
-| Feature | [**MCP Generator 3.1**](https://github.com/quotentiroler/mcp-generator-3.x) (Py, 13★) | [openapi-mcp-generator](https://github.com/harsha-iiiv/openapi-mcp-generator) (TS, 531★) | [mcp-link](https://github.com/automation-ai-labs/mcp-link) (Go, 602★) | [openapi-mcp-codegen](https://github.com/cnoe-io/openapi-mcp-codegen) (Py, 33★) | [openapi-mcp-generator](https://github.com/abutbul/openapi-mcp-generator) (Py, 28★) |
-|---|---|---|---|---|---|
-| **Approach** | Code generation | Code generation | Runtime proxy | Code generation | Code generation |
-| **OpenAPI 3.0** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **OpenAPI 3.1** | ✅ | ✅ | ✅ | ✅ | ❓ |
-| **Swagger 2.0** | ✅ | ❌ | ❌ | ❌ | ✅ |
-| **Modular sub-servers** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **FastMCP 3.x native** | ✅ | ❌ | N/A | ❌ | ❌ |
-| **Streamable HTTP** | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **JWT / JWKS auth** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **OAuth2 flows** | ✅ | env vars only | ❌ | ❌ | ❌ |
-| **Middleware stack** | ✅ (timing, logging, cache, auth) | ❌ | ❌ | ❌ | ❌ |
-| **MCP Resources** | ✅ (GET endpoints) | ❌ | ❌ | ❌ | ✅ |
-| **Event Store** | ✅ (resumable) | ❌ | ❌ | ❌ | ❌ |
-| **Auto-generated tests** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Docker output** | ✅ | ❌ | ❌ | ❌ | ✅ |
-| **Tag auto-discovery** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Server registry** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Pure Python** | ✅ (zero external deps) | ❌ (Node.js) | ❌ (Go binary) | ✅ | ✅ |
-| **Schema validation** | Pydantic | Zod | ❌ | ❌ | ❌ |
+| Feature | [**MCP Generator 3.x**](https://github.com/quotentiroler/mcp-generator-3.x) (Py, 18★) | [openapi-mcp-server](https://github.com/janwilmake/openapi-mcp-server) (TS, 887★) | [mcp-link](https://github.com/automation-ai-labs/mcp-link) (Go, 602★) | [openapi-mcp-generator](https://github.com/harsha-iiiv/openapi-mcp-generator) (TS, 566★) | [openapi-mcp](https://github.com/ckanthony/openapi-mcp) (Go, 183★) | [openapi-mcp-codegen](https://github.com/cnoe-io/openapi-mcp-codegen) (Py, 35★) |
+|---|---|---|---|---|---|---|
+| **Approach** | Code generation | Runtime search/proxy | Runtime proxy | Code generation | Runtime proxy (Docker) | Code generation |
+| **OpenAPI 3.0** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **OpenAPI 3.1** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Swagger 2.0** | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **Modular sub-servers** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **FastMCP 3.x native** | ✅ | ❌ | N/A | ❌ | N/A | ❌ |
+| **Streamable HTTP** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **JWT / JWKS auth** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **OAuth2 flows** | ✅ | ❌ | header injection | env vars only | ❌ | header injection |
+| **Middleware stack** | ✅ (timing, logging, cache, auth) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **MCP Resources** | ✅ (GET endpoints) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Event Store** | ✅ (resumable) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Auto-generated tests** | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ (eval suite) |
+| **MCP Apps (UI)** | ✅ (tables, charts, forms) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **A2A agent generation** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ (LangGraph) |
+| **LLM-enhanced docs** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ (OpenAPI Overlay) |
+| **Docker output** | ✅ | ❌ | ❌ | ❌ | ✅ (primary) | ✅ |
+| **Tag auto-discovery** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Server registry** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Endpoint filtering** | tag-based | ❌ | path filters | x-mcp extension | tag/op filters | ❌ |
+| **Schema validation** | Pydantic | ❌ | ❌ | Zod | ❌ | ❌ |
+| **Actively maintained** | ✅ (Apr 2026) | ⚠️ (Feb 2026) | ❌ (Apr 2025) | ✅ (Mar 2026) | ⚠️ (Mar 2026) | ✅ (Apr 2026) |
 
 > **Note**: [mcpo](https://github.com/open-webui/mcpo) (4,027★) solves the **inverse** problem — exposing MCP servers as OpenAPI endpoints — and is complementary rather than competitive.
 
 ---
 
-## ✨ FastMCP 3.1 Features
+## ✨ FastMCP 3.x Features
 
-MCP Generator 3.1 leverages all the latest FastMCP 3.0/3.1 capabilities:
+MCP Generator 3.x leverages all the latest FastMCP 3.x capabilities:
 
 | Feature | Description |
 |---------|-------------|
@@ -183,8 +188,14 @@ uv run generate-mcp --enable-storage --enable-caching
 # Enable MCP resources (expose API data as resources)
 uv run generate-mcp --enable-resources
 
+# Enable MCP Apps (interactive UI: tables, charts, forms, detail views)
+uv run generate-mcp --enable-apps
+
+# Enable MCP Apps with API-specific display tools from response schemas
+uv run generate-mcp --enable-apps --generate-ui
+
 # Enable all features
-uv run generate-mcp --enable-storage --enable-caching --enable-resources
+uv run generate-mcp --enable-storage --enable-caching --enable-resources --enable-apps --generate-ui
 ```
 
 **Available Features:**
@@ -194,6 +205,8 @@ uv run generate-mcp --enable-storage --enable-caching --enable-resources
 | `--enable-storage` | Persistent storage backend | OAuth refresh tokens, session data, user preferences |
 | `--enable-caching` | Response caching with TTL | Rate-limited APIs, expensive operations, slow endpoints |
 | `--enable-resources` | MCP resource templates | Expose API data for context/retrieval (GET endpoints) |
+| `--enable-apps` | MCP Apps with interactive UI display tools | Rich tables, charts, forms, and detail views in MCP clients |
+| `--generate-ui` | API-specific display tools from response schemas | Auto-generated UI per endpoint (requires `--enable-apps`) |
 
 > **Note**: `--enable-caching` requires `--enable-storage` as it uses the storage backend for cache persistence.
 
@@ -412,6 +425,45 @@ npx @modelcontextprotocol/inspector --cli \
 - **Performance**: Use Inspector's timing metrics to identify slow operations
 
 For more details, see the [Inspector documentation](https://github.com/modelcontextprotocol/inspector).
+
+---
+
+## 🎨 MCP Apps — Interactive UI Display Tools
+
+MCP Apps bring rich, interactive UI to MCP tool responses. Instead of returning raw JSON, your tools render as tables, charts, forms, and detail views in supported MCP clients.
+
+### How It Works
+
+1. **`--enable-apps`** adds curated, API-agnostic display tools (`show_table`, `show_detail`, `show_chart`, `show_form`, `show_comparison`) that the LLM fills with data from any API response
+2. **`--generate-ui`** additionally introspects your OpenAPI response schemas and generates **per-endpoint display tools** (e.g., `show_pet_table`, `show_pet_detail`) with columns, badges, and data types pre-configured
+
+```bash
+# Curated display tools only (works with any API)
+uv run generate-mcp --enable-apps
+
+# + API-specific display tools auto-generated from response schemas
+uv run generate-mcp --enable-apps --generate-ui
+```
+
+### Display Tool Types
+
+| Tool | Description | Use Case |
+|------|-------------|----------|
+| `show_table` | Interactive data table with sortable columns | List endpoints, search results |
+| `show_detail` | Card layout with key-value fields and badges | Single-record views (user profile, order details) |
+| `show_chart` | Line, bar, area, and pie charts | Analytics, metrics, time-series data |
+| `show_form` | Input form with validation | Create/update operations |
+| `show_comparison` | Side-by-side comparison cards | Comparing records or options |
+
+### Requirements
+
+MCP Apps requires `prefab-ui` (the FastMCP Apps rendering library):
+
+```bash
+pip install "fastmcp[apps]"
+```
+
+If `prefab-ui` is not installed, display tools gracefully fall back to returning structured JSON — no runtime errors.
 
 ---
 
@@ -724,7 +776,7 @@ This project is licensed under the **Apache License 2.0**.
 
 ### Why Apache 2.0?
 
-Apache 2.0 is a permissive license that promotes wide adoption while providing patent protection. It's business-friendly, widely accepted by enterprises, and commonly used for development tools and code generators. This license allows you to use MCP Generator 3.1 in your projects without worrying about copyleft requirements.
+Apache 2.0 is a permissive license that promotes wide adoption while providing patent protection. It's business-friendly, widely accepted by enterprises, and commonly used for development tools and code generators. This license allows you to use MCP Generator 3.x in your projects without worrying about copyleft requirements.
 
 **Generated Code:** The code generated by this tool is NOT considered a derivative work of the generator itself. You may license your generated MCP servers however you choose.
 
