@@ -60,14 +60,14 @@ How MCP Generator 3.x stacks up against every other OpenAPI-to-MCP project on Gi
 | **Event Store** | ✅ (resumable) | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Auto-generated tests** | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ (eval suite) |
 | **MCP Apps (UI)** | ✅ (tables, charts, forms) | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **A2A agent generation** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ (LangGraph) |
-| **LLM-enhanced docs** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ (OpenAPI Overlay) |
+| **A2A agent generation** | ✅ (lightweight a2a-sdk) | ❌ | ❌ | ❌ | ❌ | ✅ (LangGraph) |
+| **LLM-enhanced docs** | ✅ (OpenAPI Overlay 1.0) | ❌ | ❌ | ❌ | ❌ | ✅ (OpenAPI Overlay) |
 | **Docker output** | ✅ | ❌ | ❌ | ❌ | ✅ (primary) | ✅ |
 | **Tag auto-discovery** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Server registry** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Endpoint filtering** | tag-based | ❌ | path filters | x-mcp extension | tag/op filters | ❌ |
 | **Schema validation** | Pydantic | ❌ | ❌ | Zod | ❌ | ❌ |
-| **Actively maintained** | ✅ (Apr 2026) | ⚠️ (Feb 2026) | ❌ (Apr 2025) | ✅ (Mar 2026) | ⚠️ (Mar 2026) | ✅ (Apr 2026) |
+| **Actively maintained** | ✅ (Apr 2026) | ⚠️ (Feb 2026) | ❌ (Apr 2025) | ✅ (Mar 2026) | ⚠️ (Mar 2026) | ❌ (Nov 2025) |
 
 > **Note**: [mcpo](https://github.com/open-webui/mcpo) (4,027★) solves the **inverse** problem — exposing MCP servers as OpenAPI endpoints — and is complementary rather than competitive.
 
@@ -196,6 +196,15 @@ uv run generate-mcp --enable-apps --generate-ui
 
 # Enable all features
 uv run generate-mcp --enable-storage --enable-caching --enable-resources --enable-apps --generate-ui
+
+# Apply an OpenAPI Overlay to enhance descriptions before generation
+uv run generate-mcp --overlay my-overlay.yaml
+
+# Auto-generate an overlay from the spec (no manual file needed)
+uv run generate-mcp --auto-overlay
+
+# Generate an A2A agent card and adapter alongside the MCP server
+uv run generate-mcp --enable-a2a
 ```
 
 **Available Features:**
@@ -207,6 +216,9 @@ uv run generate-mcp --enable-storage --enable-caching --enable-resources --enabl
 | `--enable-resources` | MCP resource templates | Expose API data for context/retrieval (GET endpoints) |
 | `--enable-apps` | MCP Apps with interactive UI display tools | Rich tables, charts, forms, and detail views in MCP clients |
 | `--generate-ui` | API-specific display tools from response schemas | Auto-generated UI per endpoint (requires `--enable-apps`) |
+| `--enable-a2a` | A2A agent card + adapter | Expose your MCP server as an A2A-compatible agent |
+| `--overlay PATH` | Apply an OpenAPI Overlay file | Enhance descriptions, add examples before generation |
+| `--auto-overlay` | Auto-generate an overlay from the spec | Quick enrichment without writing an overlay by hand |
 
 > **Note**: `--enable-caching` requires `--enable-storage` as it uses the storage backend for cache persistence.
 

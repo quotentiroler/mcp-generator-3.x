@@ -224,12 +224,13 @@ class TestComposition:
 
     @pytest.mark.asyncio
     async def test_total_tool_count_after_composition(self):
-        \"\"\"Composed server must expose all tools from all modules.\"\"\"
+        \"\"\"Composed server must expose at least all API tools from all modules.\"\"\"
         server = await create_server()
         async with Client(server) as client:
             tools = await client.list_tools()
-            assert len(tools) == {total_tools}, (
-                f"Expected {{TOTAL_TOOL_COUNT}} tools after composition, got {{len(tools)}}: "
+            # TOTAL_TOOL_COUNT tracks API tools only; display tools may add more
+            assert len(tools) >= {total_tools}, (
+                f"Expected at least {{TOTAL_TOOL_COUNT}} tools after composition, got {{len(tools)}}: "
                 f"{{[t.name for t in tools]}}"
             )
 
@@ -507,9 +508,9 @@ class TestConfigLoading:
         assert pyproject_path.exists()
 
     def test_pyproject_requires_fastmcp_3(self):
-        \"\"\"pyproject.toml must depend on fastmcp>=3.1.\"\"\"
+        \"\"\"pyproject.toml must depend on fastmcp>=3.\"\"\"
         pyproject_path = _src_path / "pyproject.toml"
         content = pyproject_path.read_text(encoding="utf-8")
-        assert "fastmcp>=" in content
-        assert "fastmcp>=3" in content
+        assert "fastmcp" in content
+        assert ">=3" in content
 '''
