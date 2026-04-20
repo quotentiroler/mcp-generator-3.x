@@ -1,5 +1,7 @@
 """Tests for mcp_generator.generator — composition server generation."""
 
+from pathlib import Path
+
 import pytest
 
 from mcp_generator.generator import generate_main_composition_server
@@ -481,13 +483,13 @@ class TestGenerateMainCompositionServer:
 class TestWriteAppsPackage:
     """Test that write_apps_package creates the expected file structure."""
 
-    def test_creates_apps_directory(self, tmp_path) -> None:
+    def test_creates_apps_directory(self, tmp_path: Path) -> None:
         from mcp_generator.writers import write_apps_package
 
         write_apps_package(tmp_path)
         assert (tmp_path / "apps").is_dir()
 
-    def test_creates_display_tools(self, tmp_path) -> None:
+    def test_creates_display_tools(self, tmp_path: Path) -> None:
         from mcp_generator.writers import write_apps_package
 
         write_apps_package(tmp_path)
@@ -501,7 +503,7 @@ class TestWriteAppsPackage:
         assert "show_timeline" in content
         assert "show_progress" in content
 
-    def test_creates_init_py(self, tmp_path) -> None:
+    def test_creates_init_py(self, tmp_path: Path) -> None:
         from mcp_generator.writers import write_apps_package
 
         write_apps_package(tmp_path)
@@ -510,7 +512,7 @@ class TestWriteAppsPackage:
         content = init.read_text(encoding="utf-8")
         assert "display_tools_mcp" in content
 
-    def test_idempotent(self, tmp_path) -> None:
+    def test_idempotent(self, tmp_path: Path) -> None:
         """Running write_apps_package twice should not error."""
         from mcp_generator.writers import write_apps_package
 

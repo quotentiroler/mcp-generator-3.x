@@ -74,7 +74,7 @@ mcp = FastMCP("DisplayTools")
 
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
-    tags=["display"],
+    tags={"display"},
     description="Display data as an interactive, sortable, searchable table.",
 )
 def show_table(
@@ -126,7 +126,7 @@ def show_table(
 
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
-    tags=["display"],
+    tags={"display"},
     description="Display a single record as a professional key-value detail card.",
 )
 def show_detail(
@@ -176,7 +176,7 @@ def show_detail(
 
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
-    tags=["display"],
+    tags={"display"},
     description="Display data as a bar, line, area, or pie chart with legend.",
 )
 def show_chart(
@@ -230,7 +230,7 @@ def show_chart(
 
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
-    tags=["display"],
+    tags={"display"},
     description="Display a dynamic form with validation that submits to another tool.",
 )
 def show_form(
@@ -287,7 +287,7 @@ def show_form(
 
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
-    tags=["display"],
+    tags={"display"},
     description="Display a side-by-side comparison of items with highlights.",
 )
 def show_comparison(
@@ -351,7 +351,7 @@ def show_comparison(
 
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
-    tags=["display"],
+    tags={"display"},
     description="Display key metrics as a dashboard grid with optional sparklines.",
 )
 def show_metrics(
@@ -412,7 +412,7 @@ def show_metrics(
 
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
-    tags=["display"],
+    tags={"display"},
     description="Display events as a chronological timeline with status indicators.",
 )
 def show_timeline(
@@ -487,7 +487,7 @@ def show_timeline(
 
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
-    tags=["display"],
+    tags={"display"},
     description="Display a multi-step progress tracker with status indicators.",
 )
 def show_progress(

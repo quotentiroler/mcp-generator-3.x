@@ -132,14 +132,14 @@ def camel_to_snake(name: str) -> str:
     return name.lower()
 
 
-def get_pydantic_model_schema(model_class) -> dict[str, Any] | None:
+def get_pydantic_model_schema(model_class: Any) -> dict[str, Any] | None:
     """Extract schema information from a Pydantic model."""
     try:
         # Check if it's a Pydantic model
         if not hasattr(model_class, "model_fields"):
             return None
 
-        schema = {"fields": {}, "required": [], "example": {}}
+        schema: dict[str, Any] = {"fields": {}, "required": [], "example": {}}
 
         # Extract field information
         for field_name, field_info in model_class.model_fields.items():
@@ -177,7 +177,7 @@ def get_pydantic_model_schema(model_class) -> dict[str, Any] | None:
 
 
 def format_parameter_description(
-    param_name: str, param_type: Any, method
+    param_name: str, param_type: Any, method: Any
 ) -> tuple[str, str | None]:
     """
     Generate enhanced parameter description with schema details.

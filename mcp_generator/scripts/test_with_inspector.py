@@ -40,7 +40,7 @@ def find_generated_server() -> Path | None:
     return mcp_files[0]
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Test generated MCP servers with MCP Inspector")
     parser.add_argument("--cli", action="store_true", help="Use CLI mode instead of UI mode")
     parser.add_argument(

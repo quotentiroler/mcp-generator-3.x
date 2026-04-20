@@ -78,14 +78,14 @@ def _load_openapi_spec(spec_path: Path) -> dict[str, Any] | None:
     try:
         # Try loading as JSON first
         with open(spec_path, encoding="utf-8") as f:
-            return json.load(f)
+            return dict(json.load(f))
     except json.JSONDecodeError:
         # If JSON fails, try YAML
         try:
             import yaml
 
             with open(spec_path, encoding="utf-8") as f:
-                return yaml.safe_load(f)
+                return dict(yaml.safe_load(f))
         except ImportError:
             print("   ⚠️  Could not load YAML file (PyYAML not installed)")
             print("   💡 Install with: pip install pyyaml")
@@ -364,7 +364,7 @@ def get_resource_endpoints(base_dir: Path | None = None) -> dict[str, list[dict[
     # Enrich tags before grouping resources
     enrich_spec_tags(spec)
 
-    resources_by_tag = {}
+    resources_by_tag: dict[str, list[dict[str, Any]]] = {}
 
     for path, path_item in spec.get("paths", {}).items():
         # Only process GET methods

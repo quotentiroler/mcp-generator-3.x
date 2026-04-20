@@ -6,6 +6,7 @@ and managing package initialization files.
 """
 
 from pathlib import Path
+from typing import Any
 
 from .models import ModuleSpec
 
@@ -182,8 +183,8 @@ def write_display_modules(display_modules: dict[str, str], apps_dir: Path) -> No
 
 def write_package_files(
     output_dir: Path,
-    api_metadata,
-    security_config,
+    api_metadata: Any,
+    security_config: Any,
     modules: dict[str, ModuleSpec],
     total_tools: int,
     enable_storage: bool = False,

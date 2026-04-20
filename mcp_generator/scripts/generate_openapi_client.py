@@ -20,9 +20,10 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 
-def setup_utf8_console():
+def setup_utf8_console() -> None:
     """Configure UTF-8 encoding for console output (fixes emoji display on Windows)."""
     if sys.platform == "win32":
         # Set console to UTF-8 mode on Windows
@@ -40,7 +41,7 @@ def setup_utf8_console():
             pass
 
 
-def check_openapi_generator():
+def check_openapi_generator() -> str | None:
     """Check if OpenAPI Generator CLI is available."""
     # On Windows, we need to use shell=True or call via cmd
     import platform
@@ -75,7 +76,7 @@ def check_openapi_generator():
     return None
 
 
-def load_config(config_path: Path) -> dict:
+def load_config(config_path: Path) -> dict[str, Any]:
     """Load OpenAPI Generator configuration."""
     if not config_path.exists():
         print(f"⚠️  Config file not found: {config_path}")
@@ -83,7 +84,7 @@ def load_config(config_path: Path) -> dict:
         return {}
 
     with open(config_path, encoding="utf-8-sig") as f:
-        config = json.load(f)
+        config: dict[str, Any] = json.load(f)
 
     print(f"✅ Loaded config from: {config_path}")
     return config
@@ -278,7 +279,7 @@ def generate_client(
         return False
 
 
-def clean_output_dir(output_dir: Path):
+def clean_output_dir(output_dir: Path) -> None:
     """Clean the output directory before generation."""
     if output_dir.exists():
         print(f"\n🧹 Cleaning existing output directory: {output_dir}")
@@ -310,7 +311,7 @@ def clean_output_dir(output_dir: Path):
                     shutil.rmtree(item_path)
 
 
-def main():
+def main() -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(
         description="Generate Python API client from OpenAPI specification",

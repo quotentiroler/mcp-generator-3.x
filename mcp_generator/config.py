@@ -10,7 +10,7 @@ Centralized configuration for name overrides, filtering, and customization.
 # ============================================================================
 # Used to shorten long tool names to fit within MCP limits (64 chars)
 
-TOOL_NAME_ABBREVIATIONS = {}
+TOOL_NAME_ABBREVIATIONS: dict[str, str] = {}
 
 
 # ============================================================================
@@ -18,7 +18,7 @@ TOOL_NAME_ABBREVIATIONS = {}
 # ============================================================================
 # Custom names for specific operations (overrides auto-generated names)
 
-TOOL_NAME_OVERRIDES = {
+TOOL_NAME_OVERRIDES: dict[str, str] = {
     # Example: 'original_operation_id': 'custom_tool_name'
     # 'list_healthcare_users_by_role': 'list_users_by_role',
     # 'create_smart_app_registration': 'register_smart_app',

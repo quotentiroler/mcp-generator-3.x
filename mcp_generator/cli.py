@@ -7,6 +7,7 @@ Handles command-line interface, logging setup, and orchestrates the generation p
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 from .generator import generate_all, generate_main_composition_server
 from .templates.authentication import generate_authentication_middleware
@@ -40,19 +41,19 @@ from .writers import (
 )
 
 
-def setup_utf8_console():
+def setup_utf8_console() -> None:
     """Configure UTF-8 encoding for console output (fixes emoji display on Windows)."""
     if sys.platform == "win32":
         # Set console to UTF-8 mode on Windows
         os.system("chcp 65001 > nul 2>&1")
         # Reconfigure stdout encoding if available (Python 3.7+)
         try:
-            sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+            sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
         except (AttributeError, OSError):
             pass  # Not available or failed, continue anyway
 
 
-def print_metadata_summary(api_metadata, security_config):
+def print_metadata_summary(api_metadata: Any, security_config: Any) -> None:
     """Print API metadata and security configuration summary."""
     print("\n📋 API Metadata:")
     print(f"   Title: {api_metadata.title}")
@@ -82,7 +83,7 @@ def print_metadata_summary(api_metadata, security_config):
         print(f"   Available scopes: {len(oauth.all_scopes)}")
 
 
-def main():
+def main() -> None:
     """Main CLI entry point."""
     import argparse
 

@@ -14,8 +14,13 @@ from .utils import camel_to_snake, format_parameter_description, sanitize_name
 
 
 def render_pyproject_template(
-    api_metadata, security_config, server_name, total_tools, enable_storage=False, enable_apps=False
-):
+    api_metadata: Any,
+    security_config: Any,
+    server_name: str,
+    total_tools: int,
+    enable_storage: bool = False,
+    enable_apps: bool = False,
+) -> str:
     """Render the pyproject.toml template with provided values."""
     template_path = Path(__file__).parent / "templates" / "pyproject_template.toml"
     with open(template_path, encoding="utf-8") as f:
@@ -108,8 +113,13 @@ def render_pyproject_template(
 
 
 def render_fastmcp_template(
-    api_metadata, security_config, modules, total_tools, server_name, enable_apps=False
-):
+    api_metadata: Any,
+    security_config: Any,
+    modules: dict[str, Any],
+    total_tools: int,
+    server_name: str,
+    enable_apps: bool = False,
+) -> str:
     """Render the fastmcp.json template with provided values."""
     import json
 
@@ -166,7 +176,7 @@ def render_fastmcp_template(
 def generate_tool_for_method(
     api_var_name: str,
     method_name: str,
-    method,
+    method: Any,
     tag_name: str = "",
     default_timeout: int | None = 30,
     validate_output: bool | None = None,
@@ -195,7 +205,7 @@ def generate_tool_for_method(
     return _render_tool(tool_spec)
 
 
-def _build_tool_spec(api_var_name: str, method_name: str, method) -> ToolSpec | None:
+def _build_tool_spec(api_var_name: str, method_name: str, method: Any) -> ToolSpec | None:
     """Build tool specification from method introspection."""
     tool_name = sanitize_name(method_name)
 
@@ -688,7 +698,7 @@ async def {spec.resource_name}_resource({", ".join(func_params)}) -> str:
 
 def generate_server_module(
     api_var_name: str,
-    api_class,
+    api_class: Any,
     resource_endpoints: list[dict[str, Any]] | None = None,
     validate_output: bool | None = None,
     exclude_methods: set[str] | None = None,

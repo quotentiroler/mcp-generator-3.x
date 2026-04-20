@@ -19,21 +19,21 @@ from typing import Any
 class ValidationResult:
     """Container for validation results."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.errors: list[str] = []
         self.warnings: list[str] = []
         self.info: list[str] = []
         self.stats: dict[str, Any] = {}
 
-    def add_error(self, message: str):
+    def add_error(self, message: str) -> None:
         """Add a validation error (blocks generation)."""
         self.errors.append(message)
 
-    def add_warning(self, message: str):
+    def add_warning(self, message: str) -> None:
         """Add a validation warning (generation may work but with issues)."""
         self.warnings.append(message)
 
-    def add_info(self, message: str):
+    def add_info(self, message: str) -> None:
         """Add informational message."""
         self.info.append(message)
 
@@ -41,7 +41,7 @@ class ValidationResult:
         """Check if validation passed (no errors)."""
         return len(self.errors) == 0
 
-    def print_summary(self):
+    def print_summary(self) -> None:
         """Print validation summary."""
         print("\n" + "=" * 70)
         print("📊 VALIDATION SUMMARY")
@@ -83,7 +83,7 @@ def load_openapi_spec(spec_path: Path) -> dict[str, Any] | None:
 
     try:
         with open(spec_path, encoding="utf-8") as f:
-            spec = json.load(f)
+            spec: dict[str, Any] = json.load(f)
         print(f"✅ Loaded OpenAPI spec: {spec_path}")
         return spec
     except json.JSONDecodeError as e:
@@ -94,7 +94,7 @@ def load_openapi_spec(spec_path: Path) -> dict[str, Any] | None:
         return None
 
 
-def validate_basic_structure(spec: dict[str, Any], result: ValidationResult):
+def validate_basic_structure(spec: dict[str, Any], result: ValidationResult) -> None:
     """Validate basic OpenAPI structure."""
     print("\n🔍 Validating basic structure...")
 
@@ -134,7 +134,7 @@ def validate_basic_structure(spec: dict[str, Any], result: ValidationResult):
         result.add_error("Empty 'paths' section (need at least one endpoint)")
 
 
-def validate_servers(spec: dict[str, Any], result: ValidationResult):
+def validate_servers(spec: dict[str, Any], result: ValidationResult) -> None:
     """Validate server configuration."""
     print("\n🌐 Validating servers...")
 
@@ -221,7 +221,7 @@ def validate_security_schemes(spec: dict[str, Any], result: ValidationResult) ->
 
 def validate_paths_and_operations(
     spec: dict[str, Any], result: ValidationResult, valid_security: set[str]
-):
+) -> None:
     """Validate API paths and operations."""
     print("\n🛣️  Validating paths and operations...")
 
@@ -286,7 +286,7 @@ def validate_paths_and_operations(
         result.add_info(f"Tagged modules: {len(operations_by_tag)}")
 
 
-def validate_schemas(spec: dict[str, Any], result: ValidationResult):
+def validate_schemas(spec: dict[str, Any], result: ValidationResult) -> None:
     """Validate schema definitions."""
     print("\n📦 Validating schemas...")
 
@@ -312,7 +312,9 @@ def validate_schemas(spec: dict[str, Any], result: ValidationResult):
     result.add_info(f"Schema types: {schema_types}")
 
 
-def validate_for_generator(spec: dict[str, Any], result: ValidationResult, strict: bool = False):
+def validate_for_generator(
+    spec: dict[str, Any], result: ValidationResult, strict: bool = False
+) -> None:
     """Validate specific requirements for MCP generator."""
     print("\n🔧 Validating MCP generator compatibility...")
 
@@ -358,7 +360,7 @@ def validate_for_generator(spec: dict[str, Any], result: ValidationResult, stric
                 result.add_info("OpenID Connect detected - JWKS discovery available")
 
 
-def main():
+def main() -> int:
     """Main validation entry point."""
     parser = argparse.ArgumentParser(
         description="Validate OpenAPI specification for MCP generator compatibility",

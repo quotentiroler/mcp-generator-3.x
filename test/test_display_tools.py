@@ -6,12 +6,13 @@ UI path (when prefab-ui is installed) and the JSON fallback path.
 
 import importlib
 import sys
+from typing import Any
 from unittest.mock import patch
 
 import pytest
 
 
-def _load_display_tools():
+def _load_display_tools() -> Any:
     """Import the display_tools module, reloading to pick up current state."""
     mod_name = "mcp_generator.templates.display_tools"
     if mod_name in sys.modules:
