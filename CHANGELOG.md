@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.2.2-alpha+8048bcb] - 2026-04-20
+
+### Changed
+
+- Dependencies updated
+
 ## [3.2.1] - 2026-04-20
 
 - ✨ Features
