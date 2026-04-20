@@ -110,12 +110,22 @@ Examples:
   generate-mcp --enable-apps
   generate-mcp --enable-apps --generate-ui
 
+  # Enrich descriptions with an overlay or auto-enhance
+  generate-mcp --overlay ./my-overlay.yaml
+  generate-mcp --auto-overlay
+
+  # Generate A2A agent adapter
+  generate-mcp --enable-a2a
+
 Optional Features (disabled by default for simplicity):
   --enable-storage    Persistent storage for OAuth tokens & state
   --enable-caching    Response caching (reduces API calls)
   --enable-resources  MCP resources from GET endpoints
   --enable-apps       MCP Apps with interactive UI display tools
   --generate-ui       API-specific display tools from response schemas (requires --enable-apps)
+  --overlay FILE      Apply OpenAPI Overlay 1.0.0 to enrich descriptions
+  --auto-overlay      Auto-generate rule-based overlay for AI-friendly descriptions
+  --enable-a2a        Generate A2A agent adapter + AgentCard
 
 Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         """,
@@ -168,6 +178,27 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         action="store_true",
         default=False,
         help="Generate API-specific display tools from OpenAPI response schemas (requires --enable-apps)",
+    )
+
+    parser.add_argument(
+        "--overlay",
+        type=str,
+        default=None,
+        help="Path to an OpenAPI Overlay 1.0.0 file to enrich descriptions before generation",
+    )
+
+    parser.add_argument(
+        "--auto-overlay",
+        action="store_true",
+        default=False,
+        help="Auto-generate a rule-based overlay to enhance API descriptions for AI agents",
+    )
+
+    parser.add_argument(
+        "--enable-a2a",
+        action="store_true",
+        default=False,
+        help="Generate A2A (Agent-to-Agent) adapter and AgentCard for multi-agent orchestration",
     )
 
     args = parser.parse_args()
@@ -232,6 +263,41 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         sys.exit(1)
 
     print(f"\n✅ Found OpenAPI specification: {openapi_spec.name}")
+
+    # --- Apply OpenAPI Overlay if requested ---
+    if args.overlay or args.auto_overlay:
+        import copy
+        import json as _json_overlay
+
+        from .overlay import apply_overlay, generate_overlay, load_overlay
+        from .introspection import _load_openapi_spec
+
+        raw_spec = _load_openapi_spec(openapi_spec)
+        if raw_spec is None:
+            print("\n❌ Could not load OpenAPI spec for overlay processing")
+            sys.exit(1)
+
+        spec_copy = copy.deepcopy(raw_spec)
+
+        if args.overlay:
+            print(f"\n📝 Applying OpenAPI Overlay: {args.overlay}")
+            overlay_doc = load_overlay(Path(args.overlay))
+            apply_overlay(spec_copy, overlay_doc)
+            action_count = len(overlay_doc.get("actions", []))
+            print(f"   ✅ Applied {action_count} overlay actions")
+
+        if args.auto_overlay:
+            print("\n🤖 Auto-generating rule-based overlay for AI-friendly descriptions...")
+            auto_overlay = generate_overlay(spec_copy)
+            apply_overlay(spec_copy, auto_overlay)
+            print(f"   ✅ Enhanced {len(auto_overlay.get('actions', []))} descriptions")
+
+        # Write the enhanced spec back (to a separate file to preserve the original)
+        enhanced_spec_path = openapi_spec.parent / f"{openapi_spec.stem}_enhanced{openapi_spec.suffix}"
+        with open(enhanced_spec_path, "w", encoding="utf-8") as _f:
+            _json_overlay.dump(spec_copy, _f, indent=2)
+        openapi_spec = enhanced_spec_path
+        print(f"   📄 Enhanced spec: {enhanced_spec_path.name}")
 
     # Ensure API client exists before trying to introspect it
     generated_dir = src_dir / "generated_openapi"
@@ -353,6 +419,26 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                     write_display_modules(display_modules, output_dir / "apps")
                 else:
                     print("   ℹ️  No API endpoints with parseable response schemas found.")
+
+        # Generate A2A (Agent-to-Agent) adapter if requested
+        if args.enable_a2a:
+            print("\n🤖 Generating A2A agent adapter and AgentCard...")
+            from .a2a import generate_agent_card, render_a2a_adapter
+
+            agent_card = generate_agent_card(api_metadata, modules)
+            agent_card_path = output_dir / "agent_card.json"
+            import json as _a2a_json
+
+            agent_card_path.write_text(
+                _a2a_json.dumps(agent_card, indent=2), encoding="utf-8"
+            )
+            print(f"   ✅ agent_card.json ({len(agent_card['skills'])} skills)")
+
+            adapter_code = render_a2a_adapter(api_metadata)
+            adapter_path = output_dir / "a2a_adapter.py"
+            adapter_path.write_text(adapter_code, encoding="utf-8")
+            print("   ✅ a2a_adapter.py")
+            print("   💡 Install A2A deps: pip install a2a-sdk starlette uvicorn")
 
         # Generate and write main composition server
         print("\n🔗 Generating main composition server...")
@@ -531,6 +617,10 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                     f"   • Enabled: {display_module_count} API-specific display modules (tables, detail cards)"
                 )
             print("   💡 Install UI deps: pip install 'fastmcp[apps]'")
+        if args.enable_a2a:
+            print("   • Enabled: A2A agent adapter + AgentCard (agent_card.json, a2a_adapter.py)")
+        if args.overlay or args.auto_overlay:
+            print("   • Applied: OpenAPI Overlay description enrichment")
 
         print("\n📂 Output Location:")
         print(f"   {output_dir.relative_to(src_dir)}/")
