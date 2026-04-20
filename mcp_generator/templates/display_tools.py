@@ -84,7 +84,7 @@ def show_table(
     with Column(gap=4, css_class="p-6") as view:
         Heading(title)
         DataTable(
-            data=rows,
+            rows=rows,
             columns=[DataTableColumn(key=c["key"], header=c.get("label", c["key"])) for c in columns],
         )
 
