@@ -3,7 +3,7 @@ name = "mcp-generator"
 version = "3.2.1"
 description = "OpenAPI to FastAPI MCP Server Generator"
 authors = [
-    {name = "Maximilian Nussbaumer", email = "maxivities@gmail.com"}
+    {name = "Maximilian Nussbaumer", email = "max.nussbaumer@maxhealth.tech"}
 ]
 requires-python = ">=3.11"
 license = {text = "Apache-2.0"}
