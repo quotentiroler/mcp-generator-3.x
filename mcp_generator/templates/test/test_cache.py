@@ -31,7 +31,7 @@ try:
     from cache import get_cache_middleware
 except ImportError:
     print("⚠️  Skipped: Cache and storage modules not generated")
-    print("   Run with: uv run generate-mcp --enable-storage --enable-caching")
+    print("   Run with: generate-mcp --enable-storage --enable-caching")
     sys.exit(0)
 
 

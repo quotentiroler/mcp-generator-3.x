@@ -7,7 +7,7 @@ MCP Generator installs three CLI commands.
 Generate a FastMCP 3.x server from an OpenAPI spec.
 
 ```bash
-uv run generate-mcp [OPTIONS]
+generate-mcp [OPTIONS]
 ```
 
 ### Options
@@ -24,16 +24,16 @@ uv run generate-mcp [OPTIONS]
 
 ```bash
 # Local file (default)
-uv run generate-mcp
+generate-mcp
 
 # Custom file
-uv run generate-mcp --file ./my-api.yaml
+generate-mcp --file ./my-api.yaml
 
 # From URL
-uv run generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
+generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
 
 # All features enabled
-uv run generate-mcp --url https://example.com/api.json \
+generate-mcp --url https://example.com/api.json \
   --enable-storage --enable-caching --enable-resources
 ```
 
@@ -44,7 +44,7 @@ uv run generate-mcp --url https://example.com/api.json \
 Manage the local server registry at `~/.mcp-generator/servers.json`.
 
 ```bash
-uv run register-mcp <COMMAND> [OPTIONS]
+register-mcp <COMMAND> [OPTIONS]
 ```
 
 ### Commands
@@ -67,22 +67,22 @@ uv run register-mcp <COMMAND> [OPTIONS]
 
 ```bash
 # Register (explicit)
-uv run register-mcp add ./generated_mcp
+register-mcp add ./generated_mcp
 
 # Register (shorthand)
-uv run register-mcp ./generated_mcp
+register-mcp ./generated_mcp
 
 # List registered servers
-uv run register-mcp list
+register-mcp list
 
 # List as JSON
-uv run register-mcp list --json
+register-mcp list --json
 
 # Remove
-uv run register-mcp remove swagger_petstore_openapi
+register-mcp remove swagger_petstore_openapi
 
 # Export metadata
-uv run register-mcp export swagger_petstore_openapi -o server.json
+register-mcp export swagger_petstore_openapi -o server.json
 ```
 
 ---
@@ -92,7 +92,7 @@ uv run register-mcp export swagger_petstore_openapi -o server.json
 Run a registered server by name.
 
 ```bash
-uv run run-mcp <SERVER_NAME> [OPTIONS]
+run-mcp <SERVER_NAME> [OPTIONS]
 ```
 
 ### Options
@@ -109,17 +109,17 @@ uv run run-mcp <SERVER_NAME> [OPTIONS]
 
 ```bash
 # List servers
-uv run run-mcp --list
+run-mcp --list
 
 # Run via STDIO
 export BACKEND_API_TOKEN="your-token"
-uv run run-mcp swagger_petstore_openapi
+run-mcp swagger_petstore_openapi
 
 # Run via HTTP
-uv run run-mcp swagger_petstore_openapi --mode http --port 8000
+run-mcp swagger_petstore_openapi --mode http --port 8000
 
 # HTTP with JWT validation
-uv run run-mcp swagger_petstore_openapi --mode http --port 8000 --validate-tokens
+run-mcp swagger_petstore_openapi --mode http --port 8000 --validate-tokens
 ```
 
 ### Notes

@@ -134,7 +134,7 @@ git push origin develop/your-feature --force-with-lease
 
 ```bash
 # Generate from example OpenAPI spec
-uv run generate-mcp --file openapi.yaml
+generate-mcp --file openapi.yaml
 
 # Test the generated output
 cd generated_mcp
@@ -193,7 +193,7 @@ The [MCP Inspector](https://github.com/modelcontextprotocol/inspector) is the of
 
 ```bash
 # Generate a server from an example
-uv run generate-mcp --file examples/petstore/openapi.json
+generate-mcp --file examples/petstore/openapi.json
 
 # Test with Inspector UI (interactive)
 cd generated_mcp

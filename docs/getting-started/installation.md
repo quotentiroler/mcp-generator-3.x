@@ -3,38 +3,35 @@
 ## Prerequisites
 
 - **Python 3.11+** — required for modern type hints and features
-- **uv** (recommended) or **pip** — for dependency management
 - **OpenAPI Specification** — your API's OpenAPI 3.0.x, 3.1.x, or Swagger 2.0 spec (JSON or YAML)
 
 !!! note "Pure Python"
     MCP Generator is 100% Python — no Java, Node.js, or other runtimes needed.
 
-## Install with uv (Recommended)
+## Install from PyPI (Recommended)
 
 ```bash
-# Clone the repository
-git clone https://github.com/quotentiroler/mcp-generator-3.x.git
-cd mcp-generator-3.x
+pip install mcp-generator
 
-# Install dependencies
-uv sync
+# Or with uv
+uv pip install mcp-generator
 
 # Verify installation
-uv run generate-mcp --help
+generate-mcp --help
 ```
 
-## Install with pip
+## Install from Source
+
+If you want to contribute or run the latest development version:
 
 ```bash
-# Clone the repository
 git clone https://github.com/quotentiroler/mcp-generator-3.x.git
 cd mcp-generator-3.x
 
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+# With uv
+uv sync
 
-# Install dependencies
+# Or with pip
 pip install -e .
 
 # Verify installation

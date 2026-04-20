@@ -79,7 +79,7 @@ def main() -> None:
     server_path = args.server_path or find_generated_server()
     if not server_path:
         print("❌ Error: Could not find generated MCP server")
-        print("💡 Tip: Run 'uv run generate-mcp' first")
+        print("💡 Tip: Run 'generate-mcp' first")
         sys.exit(1)
 
     if not server_path.exists():

@@ -124,7 +124,7 @@ def register_server(server_path: Path) -> None:
     print(f"✅ Registered MCP server: {server_name}")
     print(f"   Path: {server_path.resolve()}")
     print(f"   Entry point: {entry_point}")
-    print(f"\nRun with: uv run run-mcp {server_name} --mode stdio")
+    print(f"\nRun with: run-mcp {server_name} --mode stdio")
 
 
 def unregister_server(server_name: str) -> None:
@@ -158,7 +158,7 @@ def list_servers(json_output: bool = False) -> None:
         print("No MCP servers registered.")
         print(f"\nRegistry location: {get_registry_path()}")
         print("\nTo register a server:")
-        print("  uv run register-mcp /path/to/server")
+        print("  register-mcp /path/to/server")
         return
 
     if json_output:
@@ -176,7 +176,7 @@ def list_servers(json_output: bool = False) -> None:
 
     print(f"\n{'=' * 70}")
     print(f"Registry location: {get_registry_path()}")
-    print("\nUsage: uv run run-mcp <server_name> [options]")
+    print("\nUsage: run-mcp <server_name> [options]")
 
 
 def export_server(server_name: str, output_file: str | None = None) -> None:

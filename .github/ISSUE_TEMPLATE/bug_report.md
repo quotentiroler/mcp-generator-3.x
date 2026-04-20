@@ -12,7 +12,7 @@ A clear and concise description of what the bug is.
 
 ## 📋 Steps to Reproduce
 
-1. Run command: `uv run generate-mcp --file my-openapi.yaml`
+1. Run command: `generate-mcp --file my-openapi.yaml`
 2. Observe error: ...
 3. See error
 
