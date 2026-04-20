@@ -96,16 +96,18 @@ def _render_detail_tool(endpoint: DisplayEndpoint, api_var_name: str) -> str:
     summary = endpoint.summary or f"View {schema.schema_name or 'record'} details"
 
     # Build function parameters from path + query params
+    # Tool params keep original OpenAPI names (e.g. petId) for the MCP schema,
+    # but API call kwargs use snake_case (e.g. pet_id) to match the generated client.
     params = []
     call_args = []
     for p in endpoint.path_params:
         hint = _param_type_hint(p)
         params.append(f"{p['name']}: {hint}")
-        call_args.append(f"{p['name']}={p['name']}")
+        call_args.append(f"{camel_to_snake(p['name'])}={p['name']}")
     for p in endpoint.query_params:
         hint = _param_type_hint(p)
         params.append(f"{p['name']}: {hint}")
-        call_args.append(f"{p['name']}={p['name']}")
+        call_args.append(f"{camel_to_snake(p['name'])}={p['name']}")
 
     params_str = ", ".join(params)
     call_args_str = ", ".join(call_args)
@@ -239,16 +241,17 @@ def _render_table_tool(endpoint: DisplayEndpoint, api_var_name: str) -> str:
     summary = endpoint.summary or f"View {schema.schema_name or 'records'} as table"
 
     # Build function parameters from query params only (tables are list endpoints)
+    # Tool params keep original OpenAPI names, API kwargs use snake_case.
     params = []
     call_args = []
     for p in endpoint.path_params:
         hint = _param_type_hint(p)
         params.append(f"{p['name']}: {hint}")
-        call_args.append(f"{p['name']}={p['name']}")
+        call_args.append(f"{camel_to_snake(p['name'])}={p['name']}")
     for p in endpoint.query_params:
         hint = _param_type_hint(p)
         params.append(f"{p['name']}: {hint}")
-        call_args.append(f"{p['name']}={p['name']}")
+        call_args.append(f"{camel_to_snake(p['name'])}={p['name']}")
 
     params_str = ", ".join(params)
     call_args_str = ", ".join(call_args)
