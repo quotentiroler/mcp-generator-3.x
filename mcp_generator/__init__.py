@@ -18,6 +18,8 @@ Usage:
     python -m mcp_generator
 """
 
+from importlib.metadata import version as _pkg_version
+
 from .cli import main
 from .generate_client import generate_client_package
 from .generator import generate_all, generate_main_composition_server, generate_modular_servers
@@ -32,7 +34,7 @@ from .models import ApiMetadata, ModuleSpec, ParameterInfo, ResourceSpec, Securi
 from .test_generator import generate_auth_flow_tests, generate_tool_tests
 from .utils import get_pydantic_model_schema, sanitize_name
 
-__version__ = "3.1.1-beta"
+__version__ = _pkg_version("mcp-generator")
 
 __all__ = [
     "main",

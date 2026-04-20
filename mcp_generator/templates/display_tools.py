@@ -316,9 +316,10 @@ def show_comparison(
         return PrefabApp(view=view)
 
     keys = list(items[0].keys())
-    # First key is used as the card heading
-    name_key = keys[0]
-    detail_keys = keys[1:]
+    # Pick the best key for the card heading (name/title/label preferred, else first key)
+    _title_candidates = ("name", "title", "label", "plan", "product", "option")
+    name_key = next((k for k in keys if k.lower() in _title_candidates), keys[0])
+    detail_keys = [k for k in keys if k != name_key]
 
     with Column(gap=5, css_class="p-6") as view:
         Heading(title)

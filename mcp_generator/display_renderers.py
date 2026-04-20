@@ -96,16 +96,18 @@ def _render_detail_tool(endpoint: DisplayEndpoint, api_var_name: str) -> str:
     summary = endpoint.summary or f"View {schema.schema_name or 'record'} details"
 
     # Build function parameters from path + query params
+    # Tool params keep original OpenAPI names (e.g. petId) for the MCP schema,
+    # but API call kwargs use snake_case (e.g. pet_id) to match the generated client.
     params = []
     call_args = []
     for p in endpoint.path_params:
         hint = _param_type_hint(p)
         params.append(f"{p['name']}: {hint}")
-        call_args.append(f"{p['name']}={p['name']}")
+        call_args.append(f"{camel_to_snake(p['name'])}={p['name']}")
     for p in endpoint.query_params:
         hint = _param_type_hint(p)
         params.append(f"{p['name']}: {hint}")
-        call_args.append(f"{p['name']}={p['name']}")
+        call_args.append(f"{camel_to_snake(p['name'])}={p['name']}")
 
     params_str = ", ".join(params)
     call_args_str = ", ".join(call_args)
@@ -141,6 +143,15 @@ def {func_name}({params_str}) -> Any:
         with Column(gap=4, css_class="p-6") as view:
             Heading("Error")
             Badge(str(e), variant="error")
+        return PrefabApp(view=view)
+
+    if result is None:
+        msg = "No record found."
+        if not PREFAB_AVAILABLE:
+            return {{"error": msg}}
+        with Column(gap=4, css_class="p-6") as view:
+            Heading("Not Found")
+            Badge(msg, variant="warning")
         return PrefabApp(view=view)
 
     if not PREFAB_AVAILABLE:
@@ -239,16 +250,17 @@ def _render_table_tool(endpoint: DisplayEndpoint, api_var_name: str) -> str:
     summary = endpoint.summary or f"View {schema.schema_name or 'records'} as table"
 
     # Build function parameters from query params only (tables are list endpoints)
+    # Tool params keep original OpenAPI names, API kwargs use snake_case.
     params = []
     call_args = []
     for p in endpoint.path_params:
         hint = _param_type_hint(p)
         params.append(f"{p['name']}: {hint}")
-        call_args.append(f"{p['name']}={p['name']}")
+        call_args.append(f"{camel_to_snake(p['name'])}={p['name']}")
     for p in endpoint.query_params:
         hint = _param_type_hint(p)
         params.append(f"{p['name']}: {hint}")
-        call_args.append(f"{p['name']}={p['name']}")
+        call_args.append(f"{camel_to_snake(p['name'])}={p['name']}")
 
     params_str = ", ".join(params)
     call_args_str = ", ".join(call_args)
@@ -352,6 +364,7 @@ DO NOT EDIT MANUALLY — regenerate using: generate-mcp --enable-apps --generate
 """
 
 import logging
+import os
 from typing import Any
 import sys
 from pathlib import Path
@@ -363,8 +376,7 @@ generated_path = Path(__file__).parent.parent.parent / "generated_openapi"
 if str(generated_path) not in sys.path:
     sys.path.insert(0, str(generated_path))
 
-from openapi_client import ApiClient, ApiException, {api_class_name}
-from middleware.authentication import get_api_client
+from openapi_client import ApiClient, ApiException, Configuration, {api_class_name}
 
 logger = logging.getLogger(__name__)
 
@@ -412,8 +424,15 @@ def _call_api(method_name: str, api_instance, **kwargs):
 
     init_code = f"""
 def _get_api():
-    \"\"\"Get an authenticated API instance.\"\"\"
-    client = get_api_client()
+    \"\"\"Get an API instance using environment-based auth.\"\"\"
+    config = Configuration()
+    base_url = os.environ.get("BACKEND_BASE_URL", "")
+    if base_url:
+        config.host = base_url
+    token = os.environ.get("BACKEND_API_TOKEN", "")
+    if token:
+        config.access_token = token
+    client = ApiClient(config)
     return {api_class_name}(client)
 
 {api_var_name} = _get_api()

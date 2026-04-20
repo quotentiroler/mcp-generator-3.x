@@ -1,5 +1,45 @@
 # Changelog
 
+## [3.2.1] - 2026-04-20
+
+- ✨ Features
+  - 🔧 feat: add A2A agent generation and OpenAPI Overlay support
+  - 🔧 feat: MCP Apps Phase 1 — curated display tools + GenerativeUI wiring
+  - 🔧 feat: MCP Apps Phase 2 + bump to v3.2.0
+  - 🔧 feat: MCP Apps + v3.2.0 — interactive UI display tools, docs refresh
+  - 🔧 feat: add show_metrics, show_timeline, show_progress display tools
+
+- 🐛 Bug Fixes
+  - 🐛 fix: display renderers use Configuration instead of missing get_api_client
+  - 🐛 fix: guard against None API results in detail display tools
+  - 🐛 fix: snake_case param names in display tool API calls
+  - 🐛 fix: comparison tool picks name/title/label key for card heading
+  - 🐛 fix: resolve ruff lint errors and sort imports in __init__.py
+  - 🐛 fix: resolve 77 mypy type errors across 18 files
+  - 🐛 fix: use rows= kwarg for DataTable (not data=)
+  - 🐛 fix: correct prefab-ui imports in display_tools template
+
+- 📚 Documentation
+  - 📚 docs: update CHANGELOG.md for PR #59
+  - 📚 docs: rename MCP Generator 3.1 -> 3.x across README and CLI
+  - 📚 docs: update competitive analysis — add new competitors, refresh star counts, add feature rows
+  - 📚 docs: add MCP Apps (interactive UI display tools) to README
+
+- 🔧 Chores & Improvements
+  - 🔧 style: apply ruff formatting to new files
+  - 🔧 style: sort imports in __init__.py
+  - 🔧 fix: resolve ruff lint errors in a2a, overlay, and test files
+  - 🔧 refactor: derive __version__ from pyproject.toml via importlib.metadata
+  - 🔧 chore: bump version to 3.2.1
+  - 🔧 clean: general cleanup
+  - 🔧 fix: correct actively maintained status for openapi-mcp-codegen
+
+- ⚠️ Breaking Changes
+  - None detected for this release.
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/61
+
+
 ## [3.2.0] - 2026-04-20
 
 - ✨ Features: MCP Apps Phase 1 — interactive UI display tools (show_table, show_detail, show_chart, show_form, show_comparison, show_metrics, show_timeline, show_progress) with Prefab UI rendering and JSON fallback; Phase 2 planned with --generate-ui to create API-specific tools from OpenAPI schemas
