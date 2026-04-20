@@ -16,7 +16,7 @@ Please do not report security vulnerabilities through public GitHub issues.
 
 ### 2. **Report Privately**
 
-Send an email to: **maxivities@gmail.com**
+Send an email to: **max.nussbaumer@maxhealth.tech**
 
 Include the following information:
 - Type of vulnerability
@@ -121,7 +121,7 @@ When deploying generated MCP servers:
 
 ## Contact
 
-For security issues: maxivities@gmail.com
+For security issues: max.nussbaumer@maxhealth.tech
 
 For general support: [GitHub Issues](https://github.com/quotentiroler/mcp-generator-3.x/issues)
 

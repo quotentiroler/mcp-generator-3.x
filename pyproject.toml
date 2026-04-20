@@ -3,11 +3,21 @@ name = "mcp-generator"
 version = "3.2.1"
 description = "OpenAPI to FastAPI MCP Server Generator"
 authors = [
-    {name = "Maximilian Nussbaumer", email = "maxivities@gmail.com"}
+    {name = "Maximilian Nussbaumer", email = "max.nussbaumer@maxhealth.tech"}
 ]
 requires-python = ">=3.11"
 license = {text = "Apache-2.0"}
 readme = "README.md"
+keywords = ["mcp", "openapi", "fastmcp", "code-generation", "ai", "llm", "agent", "a2a"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Code Generators",
+]
 dependencies = [
     "pyyaml>=6.0.0",  # For parsing OpenAPI YAML files
     "httpx>=0.28.1",  # For downloading OpenAPI specs from URLs (--url flag)
@@ -25,6 +35,13 @@ ci = [
 generate-mcp = "mcp_generator.cli:main"
 register-mcp = "mcp_generator.register_mcp:main"
 run-mcp = "mcp_generator.run_mcp:main"
+
+[project.urls]
+Homepage = "https://github.com/quotentiroler/mcp-generator-3.x"
+Documentation = "https://quotentiroler.github.io/mcp-generator-3.x/"
+Repository = "https://github.com/quotentiroler/mcp-generator-3.x"
+Issues = "https://github.com/quotentiroler/mcp-generator-3.x/issues"
+Changelog = "https://github.com/quotentiroler/mcp-generator-3.x/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["hatchling"]

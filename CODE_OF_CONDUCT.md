@@ -59,7 +59,7 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the project maintainer at **maxivities@gmail.com**.
+reported to the project maintainer at **max.nussbaumer@maxhealth.tech**.
 
 All complaints will be reviewed and investigated promptly and fairly.
 

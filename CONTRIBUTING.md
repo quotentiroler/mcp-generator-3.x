@@ -486,7 +486,7 @@ See our [Code of Conduct](CODE_OF_CONDUCT.md) for details.
 - **Discord/Slack** - [Coming soon]
 - **GitHub Discussions** - For questions and discussions
 - **GitHub Issues** - For bugs and features
-- **Email** - maxivities@gmail.com
+- **Email** - max.nussbaumer@maxhealth.tech
 
 ## 🎓 Learning Resources
 
