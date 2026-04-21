@@ -54,7 +54,8 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # Backend API URL (extracted from OpenAPI spec during generation)
-BACKEND_API_URL = "{backend_url}"
+# Override at runtime with BACKEND_BASE_URL env var
+BACKEND_API_URL = os.environ.get("BACKEND_BASE_URL", "{backend_url}")
 
 
 class OAuthTokenManager:
