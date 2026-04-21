@@ -32,6 +32,7 @@ DO NOT EDIT MANUALLY - regenerate using: python -m mcp_generator
 
 import json
 import logging
+import os
 import time
 from typing import Any, Optional
 

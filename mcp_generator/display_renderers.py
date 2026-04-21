@@ -376,7 +376,8 @@ generated_path = Path(__file__).parent.parent.parent / "generated_openapi"
 if str(generated_path) not in sys.path:
     sys.path.insert(0, str(generated_path))
 
-from openapi_client import ApiClient, ApiException, Configuration, {api_class_name}
+from openapi_py_fetch import ApiClient, ApiException, Configuration
+from openapi_client import {api_class_name}
 
 logger = logging.getLogger(__name__)
 

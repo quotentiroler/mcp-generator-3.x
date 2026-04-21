@@ -75,7 +75,7 @@ if str(mcp_server_path) not in sys.path:
 if str(generated_openapi_path) not in sys.path:
     sys.path.insert(0, str(generated_openapi_path))
 
-from generated_openapi.openapi_client import ApiClient, Configuration
+from openapi_py_fetch import ApiClient, Configuration
 
 logger = logging.getLogger(__name__)
 

@@ -315,10 +315,11 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
             with open(openapi_spec, encoding="utf-8") as _f:
                 spec = _json.load(_f)
 
-            from .generate_client import generate_client_package
+            from openapi_py_fetch.generator import generate_client_package
+            from .introspection import enrich_spec_tags
 
             generated_dir.mkdir(parents=True, exist_ok=True)
-            ok = generate_client_package(spec, generated_dir)
+            ok = generate_client_package(spec, generated_dir, enrich_tags_fn=enrich_spec_tags)
             if not ok:
                 print("\n❌ API Client Generation Failed")
                 print("\n💡 Verify your openapi.json is valid:")
