@@ -222,7 +222,15 @@ def get_api_metadata(base_dir: Path | None = None) -> ApiMetadata:
                 additional_metadata["contact"] = info.get("contact", {})
                 additional_metadata["license"] = info.get("license", {})
                 additional_metadata["terms_of_service"] = info.get("termsOfService")
-                additional_metadata["servers"] = spec.get("servers", [])
+
+                # Build servers list: OpenAPI 3.x uses "servers", Swagger 2.0 uses host/basePath/schemes
+                servers = spec.get("servers", [])
+                if not servers and spec.get("host"):
+                    scheme = (spec.get("schemes") or ["https"])[0]
+                    base_path = spec.get("basePath", "")
+                    servers = [{"url": f"{scheme}://{spec['host']}{base_path}"}]
+                additional_metadata["servers"] = servers
+
                 additional_metadata["external_docs"] = spec.get("externalDocs", {})
                 additional_metadata["tags"] = spec.get("tags", [])
 
