@@ -100,7 +100,7 @@ Each generated server includes a `fastmcp.json` with comprehensive feature confi
 
 | Variable | Description | Required |
 |---|---|---|
-| `BACKEND_API_TOKEN` | Token forwarded to the backend API | For authenticated APIs |
+| `API_TOKEN` | Token forwarded to the backend API | For authenticated APIs |
 | `JWKS_URI` | Override JWKS endpoint for JWT validation | No (auto-discovered) |
 | `JWT_ISSUER` | Override JWT issuer claim | No (auto-discovered) |
 | `JWT_AUDIENCE` | Override JWT audience claim | No (auto-discovered) |

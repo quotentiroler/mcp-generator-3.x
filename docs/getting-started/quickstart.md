@@ -79,7 +79,7 @@ This adds your server to the local registry at `~/.mcp-generator/servers.json`.
 === "STDIO (local AI clients)"
 
     ```bash
-    export BACKEND_API_TOKEN="your-api-token-here"
+    export API_TOKEN="your-api-token-here"
     run-mcp swagger_petstore_openapi
     ```
 
@@ -118,7 +118,7 @@ Add to `~/.claude/claude_desktop_config.json`:
       "command": "python",
       "args": ["/path/to/generated_mcp/swagger_petstore_openapi_mcp_generated.py"],
       "env": {
-        "BACKEND_API_TOKEN": "your-api-token-here"
+        "API_TOKEN": "your-api-token-here"
       }
     }
   }

@@ -53,9 +53,9 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# Backend API URL (extracted from OpenAPI spec during generation)
-# Override at runtime with BACKEND_BASE_URL env var
-BACKEND_API_URL = os.environ.get("BACKEND_BASE_URL", "{backend_url}")
+# API base URL (extracted from OpenAPI spec during generation)
+# Override at runtime with API_BASE_URL env var
+API_BASE_URL = os.environ.get("API_BASE_URL", "{backend_url}")
 
 
 class OAuthTokenManager:
@@ -358,7 +358,7 @@ def create_remote_auth_provider(
 ) -> RemoteAuthProvider:
     """Create a RemoteAuthProvider for backend OAuth discovery."""
 
-    backend_url = backend_url or BACKEND_API_URL
+    backend_url = backend_url or API_BASE_URL
     required_scopes = required_scopes or [{scopes_str}]
 
     logger.info("Creating RemoteAuthProvider")
@@ -390,7 +390,7 @@ def create_jwt_verifier(
 ) -> Optional[JWTVerifier]:
     """Create a standalone JWTVerifier for token validation."""
 
-    backend_url = backend_url or BACKEND_API_URL
+    backend_url = backend_url or API_BASE_URL
     scopes = required_scopes if required_scopes is not None else []
 
     try:
@@ -494,7 +494,7 @@ def create_propelauth_provider(
     auth_url = config.get("auth_url")
     client_id = config.get("introspection_client_id")
     client_secret = config.get("introspection_client_secret")
-    base_url = config.get("base_url", BACKEND_API_URL)
+    base_url = config.get("base_url", API_BASE_URL)
     required_scopes = config.get("required_scopes")
 
     if not all([auth_url, client_id, client_secret]):
@@ -553,7 +553,7 @@ def create_oauth_proxy(
     token_endpoint = config.get("upstream_token_endpoint")
     client_id = config.get("upstream_client_id")
     client_secret = config.get("upstream_client_secret")
-    base_url = config.get("base_url", BACKEND_API_URL)
+    base_url = config.get("base_url", API_BASE_URL)
 
     if not all([auth_endpoint, token_endpoint, client_id, client_secret]):
         logger.error(

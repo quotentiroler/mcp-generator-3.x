@@ -79,9 +79,9 @@ from generated_openapi.openapi_client import ApiClient, Configuration
 
 logger = logging.getLogger(__name__)
 
-# Backend API URL (extracted from OpenAPI spec during generation)
-# Override at runtime with BACKEND_BASE_URL env var
-BACKEND_API_URL = os.environ.get("BACKEND_BASE_URL", "{backend_url}")
+# API base URL (extracted from OpenAPI spec during generation)
+# Override at runtime with API_BASE_URL env var
+API_BASE_URL = os.environ.get("API_BASE_URL", "{backend_url}")
 
 # Security configuration (extracted during generation)
 # JWKS URI: {jwks_uri}
@@ -199,20 +199,20 @@ class ApiClientContextMiddleware(Middleware):
 
     def _get_stdio_client(self) -> ApiClient:
         if self._stdio_client is None:
-            config = Configuration(host=BACKEND_API_URL)
-            token = os.getenv("BACKEND_API_TOKEN")
+            config = Configuration(host=API_BASE_URL)
+            token = os.getenv("API_TOKEN")
 
             if token:
                 config.access_token = token
             else:
-                logger.warning("BACKEND_API_TOKEN not set for STDIO transport")
+                logger.warning("API_TOKEN not set for STDIO transport")
 
             self._stdio_client = ApiClient(configuration=config)
 
         return self._stdio_client
 
     def _build_http_client(self, context: MiddlewareContext) -> ApiClient:
-        config = Configuration(host=BACKEND_API_URL)
+        config = Configuration(host=API_BASE_URL)
         token = None
 
         fastmcp_ctx = getattr(context, "fastmcp_context", None)
@@ -235,9 +235,9 @@ class ApiClientContextMiddleware(Middleware):
             token: Optional[str] = None
 
             if self.transport_mode == "stdio":
-                token = os.getenv("BACKEND_API_TOKEN")
+                token = os.getenv("API_TOKEN")
                 if not token:
-                    logger.warning("No BACKEND_API_TOKEN configured for STDIO transport")
+                    logger.warning("No API_TOKEN configured for STDIO transport")
                 openapi_client = self._get_stdio_client()
             else:
                 openapi_client = self._build_http_client(context)

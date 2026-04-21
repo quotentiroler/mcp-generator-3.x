@@ -86,10 +86,10 @@ def backend_api_url():
     """
     Backend API URL for token acquisition.
 
-    Configured via BACKEND_API_URL environment variable.
+    Configured via API_BASE_URL environment variable.
     Falls back to localhost:8445 if not set.
     """
-    return os.getenv("BACKEND_API_URL", "http://localhost:8445")
+    return os.getenv("API_BASE_URL", "http://localhost:8445")
 
 
 @pytest.fixture

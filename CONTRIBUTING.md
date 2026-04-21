@@ -197,11 +197,11 @@ generate-mcp --file examples/petstore/openapi.json
 
 # Test with Inspector UI (interactive)
 cd generated_mcp
-npx @modelcontextprotocol/inspector -e BACKEND_API_TOKEN=test python *_mcp_generated.py
+npx @modelcontextprotocol/inspector -e API_TOKEN=test python *_mcp_generated.py
 
 # Test with Inspector CLI (automation)
 npx @modelcontextprotocol/inspector --cli \
-  -e BACKEND_API_TOKEN=test \
+  -e API_TOKEN=test \
   python *_mcp_generated.py \
   --method tools/list
 

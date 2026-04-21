@@ -252,7 +252,7 @@ class TestOpenAPIVersionFeatures:
     async def test_swagger2_security_definitions(self, mcp_client):
         """Test Swagger 2.0 securityDefinitions handling."""
         # Swagger 2.0 uses securityDefinitions at root level
-        # Generated tools should handle auth via BACKEND_API_TOKEN or oauth flows
+        # Generated tools should handle auth via API_TOKEN or oauth flows
 
         client, mcp_server_url, session_id = mcp_client
 

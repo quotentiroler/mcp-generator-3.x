@@ -33,7 +33,7 @@ generate-mcp --file examples/petstore/openapi.json
 cd generated_mcp
 
 # Run in STDIO mode
-export BACKEND_API_TOKEN="your-token"
+export API_TOKEN="your-token"
 python *_mcp_generated.py --transport stdio
 
 # Or run in HTTP mode

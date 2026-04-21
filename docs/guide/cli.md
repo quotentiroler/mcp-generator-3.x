@@ -112,7 +112,7 @@ run-mcp <SERVER_NAME> [OPTIONS]
 run-mcp --list
 
 # Run via STDIO
-export BACKEND_API_TOKEN="your-token"
+export API_TOKEN="your-token"
 run-mcp swagger_petstore_openapi
 
 # Run via HTTP

@@ -35,7 +35,7 @@ Catches all exceptions during tool execution and returns structured error respon
 
 The `ApiClientContextMiddleware` handles:
 
-- **STDIO mode** — forwards `BACKEND_API_TOKEN` to the backend API
+- **STDIO mode** — forwards `API_TOKEN` to the backend API
 - **HTTP mode** — optionally validates JWT tokens via JWKS
 - **Identity injection** — makes authenticated user context available to tools
 - **Dynamic visibility** — per-session component toggling based on scopes (opt-in)

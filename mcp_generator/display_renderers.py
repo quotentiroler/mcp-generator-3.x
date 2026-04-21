@@ -426,10 +426,10 @@ def _call_api(method_name: str, api_instance, **kwargs):
 def _get_api():
     \"\"\"Get an API instance using environment-based auth.\"\"\"
     config = Configuration()
-    base_url = os.environ.get("BACKEND_BASE_URL", "")
+    base_url = os.environ.get("API_BASE_URL", "")
     if base_url:
         config.host = base_url
-    token = os.environ.get("BACKEND_API_TOKEN", "")
+    token = os.environ.get("API_TOKEN", "")
     if token:
         config.access_token = token
     client = ApiClient(config)

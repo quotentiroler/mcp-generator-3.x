@@ -312,7 +312,7 @@ run-mcp {server_name} --mode stdio
 
 Set authentication token:
 ```bash
-export BACKEND_API_TOKEN="your-token-here"
+export API_TOKEN="your-token-here"
 run-mcp {server_name} --mode stdio
 ```
 
@@ -373,8 +373,8 @@ Set `validate_tokens: true` to enable JWT validation by default when using HTTP 
 
 ### Environment Variables
 
-- `BACKEND_API_URL` - Backend API URL (default: {api_metadata.backend_url})
-- `BACKEND_API_TOKEN` - API token for STDIO mode
+- `API_BASE_URL` - Backend API URL (default: {api_metadata.backend_url})
+- `API_TOKEN` - API token for STDIO mode
 
 **Note:** JWT validation is configured automatically from the OpenAPI specification. The JWKS URI, issuer, and audience are extracted during code generation and baked into the server code.
 
@@ -409,7 +409,7 @@ Options:
 ## Authentication
 
 ### STDIO Mode
-- Uses `BACKEND_API_TOKEN` environment variable
+- Uses `API_TOKEN` environment variable
 - Token passed to backend API for each request
 - Token validation happens at the backend (not in MCP server)
 

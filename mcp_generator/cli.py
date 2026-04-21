@@ -641,7 +641,7 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
 
         print("\n� Usage Modes:")
         print("   • STDIO: For Claude Desktop, Cline, etc.")
-        print("     export BACKEND_API_TOKEN=your_token")
+        print("     export API_TOKEN=your_token")
         print(f"     python {server_name}_mcp_generated.py")
         print("\n   • HTTP: For web-based MCP clients")
         print(f"     python {server_name}_mcp_generated.py --transport=http --port=8000")

@@ -140,7 +140,7 @@ def run_tests(test_filter: str | None = None):
 
     # Add any required environment variables
     # For authenticated APIs, you might need:
-    # server_env["BACKEND_API_TOKEN"] = "your-token-here"
+    # server_env["API_TOKEN"] = "your-token-here"
 
     # Start the server directly with Python
     # Use PIPE to capture output for debugging when startup fails

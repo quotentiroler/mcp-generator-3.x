@@ -625,7 +625,7 @@ def main():
 
     if args.transport == "stdio":
         logger.info("🚀 Starting FastMCP 3.x server with STDIO transport")
-        logger.info("  🔐 Authentication: BACKEND_API_TOKEN environment variable")
+        logger.info("  🔐 Authentication: API_TOKEN environment variable")
         logger.info("  🔒 Token validation: N/A (STDIO mode - backend validates tokens)")
         logger.info(f"  📦 Modules: {len(module_names)} composed ({{TOTAL_TOOL_COUNT}} MCP tools)")
         logger.info("  🔧 Middleware: Error handling → Auth → Timing → Logging → ResponseLimiting → Ping")

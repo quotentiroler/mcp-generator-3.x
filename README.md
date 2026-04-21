@@ -239,7 +239,7 @@ This adds your server to the local registry at `~/.mcp-generator/servers.json` s
 
 ```bash
 # Option 1: Run via registry (STDIO mode for local AI clients)
-export BACKEND_API_TOKEN="your-api-token-here"  # On Windows: set BACKEND_API_TOKEN=...
+export API_TOKEN="your-api-token-here"  # On Windows: set API_TOKEN=...
 run-mcp swagger_petstore_openapi
 
 # Option 2: Run via registry (HTTP mode)
@@ -270,7 +270,7 @@ Add to `~/.claude/claude_desktop_config.json`:
       "command": "python",
       "args": ["/path/to/generated_mcp/swagger_petstore_openapi_mcp_generated.py"],
       "env": {
-        "BACKEND_API_TOKEN": "your-api-token-here"
+        "API_TOKEN": "your-api-token-here"
       }
     }
   }
@@ -297,7 +297,7 @@ fastmcp dev swagger_petstore_openapi_mcp_generated.py:create_server
 npx @modelcontextprotocol/inspector python swagger_petstore_openapi_mcp_generated.py
 
 # Or use environment variables
-npx @modelcontextprotocol/inspector -e BACKEND_API_TOKEN=your-token python swagger_petstore_openapi_mcp_generated.py
+npx @modelcontextprotocol/inspector -e API_TOKEN=your-token python swagger_petstore_openapi_mcp_generated.py
 ```
 
 > **Note**: When using `fastmcp dev` or `fastmcp run`, always include `:create_server` to properly compose the modular server architecture.
@@ -349,7 +349,7 @@ npx @modelcontextprotocol/inspector --cli python swagger_petstore_openapi_mcp_ge
 
 # Test with environment variables
 npx @modelcontextprotocol/inspector --cli \
-  -e BACKEND_API_TOKEN=your-token \
+  -e API_TOKEN=your-token \
   python swagger_petstore_openapi_mcp_generated.py \
   --method tools/list
 ```
@@ -385,7 +385,7 @@ Example exported config:
       "command": "python",
       "args": ["swagger_petstore_openapi_mcp_generated.py"],
       "env": {
-        "BACKEND_API_TOKEN": "your-token"
+        "API_TOKEN": "your-token"
       }
     }
   }
@@ -402,17 +402,17 @@ generate-mcp --file ./openapi.yaml
 
 # 2. Test with Inspector UI (interactive development)
 cd generated_mcp
-npx @modelcontextprotocol/inspector -e BACKEND_API_TOKEN=test python *_mcp_generated.py
+npx @modelcontextprotocol/inspector -e API_TOKEN=test python *_mcp_generated.py
 
 # 3. Automated testing (CI/CD)
 npx @modelcontextprotocol/inspector --cli \
-  -e BACKEND_API_TOKEN=test \
+  -e API_TOKEN=test \
   python *_mcp_generated.py \
   --method tools/list > tools.json
 
 # 4. Test specific tools
 npx @modelcontextprotocol/inspector --cli \
-  -e BACKEND_API_TOKEN=test \
+  -e API_TOKEN=test \
   python *_mcp_generated.py \
   --method tools/call \
   --tool-name get_user \
@@ -541,11 +541,11 @@ register-mcp export swagger_petstore_openapi -o server.json
 run-mcp --list
 
 # Run via STDIO (Linux/macOS)
-export BACKEND_API_TOKEN="your-api-token" && run-mcp swagger_petstore_openapi
+export API_TOKEN="your-api-token" && run-mcp swagger_petstore_openapi
 
 # Run via STDIO (Windows PowerShell)
 powershell
-$env:BACKEND_API_TOKEN = "your-api-token"
+$env:API_TOKEN = "your-api-token"
 run-mcp swagger_petstore_openapi
 
 # Run via HTTP
