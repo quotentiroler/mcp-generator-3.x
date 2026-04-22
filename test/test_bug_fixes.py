@@ -974,3 +974,64 @@ class TestResourceNameSanitization:
             compile(code, "<test>", "exec")
         except SyntaxError as e:
             pytest.fail(f"Rendered resource code has SyntaxError: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Bug #20: Wildcard catch-all paths produce empty URI scheme
+#
+# Root cause: Paths like /apps/{app}/* have '*' as the last non-parameter
+# segment. camel_to_snake("*") → "" because all chars are non-alphanumeric.
+# This produces a URI template like "://apps/{app}/*" with an empty scheme,
+# which fails URI scheme validation.
+#
+# Fix: Filter out '*' wildcards from path_segments; add fallback for
+# invalid uri_scheme.
+# ---------------------------------------------------------------------------
+
+
+class TestWildcardPathResourceGeneration:
+    """Wildcard catch-all routes must not produce empty URI schemes."""
+
+    def test_wildcard_filtered_from_path_segments(self) -> None:
+        """Path like /apps/{app}/* should use 'apps' not '*' as resource name."""
+        from mcp_generator.renderers import generate_resource_for_endpoint
+
+        endpoint = {
+            "path": "/apps/{app}/*",
+            "operation_id": "getAppFiles",
+            "summary": "Get app files",
+            "description": "Get files for an app",
+            "path_params": [{"name": "app", "python_type": "str", "description": "App ID"}],
+            "query_params": [],
+        }
+        result = generate_resource_for_endpoint("apps_api", endpoint, "get_app_files")
+        assert result is not None
+        # URI scheme should be 'apps', not '*' or empty
+        assert result.uri_template.startswith("apps://"), (
+            f"Expected 'apps://' scheme, got: {result.uri_template}"
+        )
+        # Function name should be valid Python identifier
+        assert result.resource_name.isidentifier(), (
+            f"resource_name should be valid identifier, got: {result.resource_name}"
+        )
+
+    def test_pure_wildcard_path_falls_back_to_operation_id(self) -> None:
+        """Path like /{id}/* should fall back to operation_id for naming."""
+        from mcp_generator.renderers import generate_resource_for_endpoint
+
+        endpoint = {
+            "path": "/{id}/*",
+            "operation_id": "getCatchAll",
+            "summary": "Catch-all",
+            "description": "Catch all",
+            "path_params": [{"name": "id", "python_type": "str", "description": "ID"}],
+            "query_params": [],
+        }
+        result = generate_resource_for_endpoint("default_api", endpoint, "get_catch_all")
+        assert result is not None
+        # Should not have empty scheme
+        scheme = result.uri_template.split("://")[0]
+        assert scheme, f"URI scheme should not be empty, got: {result.uri_template}"
+        assert any(c.isalnum() for c in scheme), (
+            f"URI scheme must contain alphanumeric chars, got: '{scheme}'"
+        )

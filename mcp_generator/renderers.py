@@ -556,7 +556,10 @@ def generate_resource_for_endpoint(
     # /store/order/{orderId} -> order://{orderId}
 
     # Extract resource name from path (use last segment or operation_id)
-    path_segments = [seg for seg in path.split("/") if seg and not seg.startswith("{")]
+    # Filter out wildcards (*) which are catch-all routes, not meaningful segments
+    path_segments = [
+        seg for seg in path.split("/") if seg and not seg.startswith("{") and seg != "*"
+    ]
 
     if not path_segments:
         # Path is only parameters (unusual), use operation_id
@@ -571,6 +574,9 @@ def generate_resource_for_endpoint(
     resource_name = camel_to_snake(resource_name)
     if not resource_name:
         resource_name = camel_to_snake(operation_id) or "resource"
+    # Fallback URI scheme if original was purely non-alphanumeric
+    if not uri_scheme or not any(c.isalnum() for c in uri_scheme):
+        uri_scheme = resource_name
 
     # Build URI template
     # Replace /segment/{param} with scheme://segment/{param}
