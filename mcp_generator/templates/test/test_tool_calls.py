@@ -155,13 +155,17 @@ MCP_URL = os.getenv("MCP_SERVER_URL", "http://localhost:8000/mcp")
 # ---------------------------------------------------------------------------
 
 def _parse_sse(text: str) -> dict | None:
-    """Extract the first JSON-RPC result from an SSE stream."""
+    """Extract the JSON-RPC result from an SSE stream, skipping notifications."""
     for line in text.splitlines():
         if line.startswith("data: "):
             try:
-                return json.loads(line[6:])
+                msg = json.loads(line[6:])
             except json.JSONDecodeError:
                 continue
+            # Skip server notifications (they have "method" but no "id")
+            if "method" in msg and "id" not in msg:
+                continue
+            return msg
     return None
 
 

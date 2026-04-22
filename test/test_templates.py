@@ -641,3 +641,8 @@ class TestToolCallTemplate:
     def test_coverage_comment_correct(self, tool_call_code: str) -> None:
         assert "2 read-only tools (GET)" in tool_call_code
         assert "2 write tools (POST/PUT/DELETE)" in tool_call_code
+
+    def test_sse_parser_skips_notifications(self, tool_call_code: str) -> None:
+        """SSE parser should skip server notifications and return the result."""
+        assert "Skip server notifications" in tool_call_code
+        assert '"method" in msg and "id" not in msg' in tool_call_code
