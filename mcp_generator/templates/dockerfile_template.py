@@ -57,7 +57,7 @@ COPY pyproject.toml README.md ./
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV BACKEND_API_URL={api_metadata.backend_url}
+ENV API_BASE_URL={api_metadata.backend_url}
 
 # Create non-root user
 RUN useradd -m -u 1000 mcpuser && chown -R mcpuser:mcpuser /app
@@ -80,16 +80,16 @@ CMD ["--transport", "http", "--host", "0.0.0.0", "--port", "8000"]
 #   docker build -t {server_name}-mcp .
 #
 # Run in HTTP mode (default):
-#   docker run -p 8000:8000 -e BACKEND_API_TOKEN=your-token {server_name}-mcp
+#   docker run -p 8000:8000 -e API_TOKEN=your-token {server_name}-mcp
 #
 # Run in HTTP mode with JWT validation:
 #   docker run -p 8000:8000 {server_name}-mcp --validate-tokens
 #
 # Run in STDIO mode (for local testing):
-#   docker run -i -e BACKEND_API_TOKEN=your-token {server_name}-mcp --transport stdio
+#   docker run -i -e API_TOKEN=your-token {server_name}-mcp --transport stdio
 #
 # Override backend URL:
-#   docker run -p 8000:8000 -e BACKEND_API_URL=https://api.example.com {server_name}-mcp
+#   docker run -p 8000:8000 -e API_BASE_URL=https://api.example.com {server_name}-mcp
 #
 # With docker-compose (see docker-compose.yml):
 #   docker-compose up
@@ -118,8 +118,8 @@ services:
 
     environment:
       # Backend API configuration
-      BACKEND_API_URL: {api_metadata.backend_url}
-      BACKEND_API_TOKEN: ${{BACKEND_API_TOKEN}}  # Set in .env file
+      API_BASE_URL: {api_metadata.backend_url}
+      API_TOKEN: ${{API_TOKEN}}  # Set in .env file
 
       # Python settings
       PYTHONUNBUFFERED: "1"
@@ -166,7 +166,7 @@ services:
 #     driver: bridge
 
 # Usage:
-#   1. Create .env file with: BACKEND_API_TOKEN=your-token
+#   1. Create .env file with: API_TOKEN=your-token
 #   2. Run: docker-compose up -d
 #   3. View logs: docker-compose logs -f
 #   4. Stop: docker-compose down

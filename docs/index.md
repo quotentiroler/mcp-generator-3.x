@@ -7,6 +7,7 @@ hide:
 
 **Transform any OpenAPI specification into a production-ready [FastMCP 3.x](https://github.com/PrefectHQ/fastmcp) server.**
 
+[![PyPI](https://img.shields.io/pypi/v/mcp-generator)](https://pypi.org/project/mcp-generator/)
 [![GitHub Release](https://img.shields.io/github/v/release/quotentiroler/mcp-generator-3.x?label=version)](https://github.com/quotentiroler/mcp-generator-3.x/releases)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.11+](https://img.shields.io/badge/python-v3.11-3776ab.svg)](https://www.python.org/downloads/)
@@ -75,12 +76,11 @@ MCP Generator automatically creates **modular, composable MCP servers** from Ope
 ## Quick Example
 
 ```bash
-# Install
-git clone https://github.com/quotentiroler/mcp-generator-3.x.git
-cd mcp-generator-3.x && uv sync
+# Install from PyPI
+pip install mcp-generator
 
 # Generate from any OpenAPI spec
-uv run generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
+generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
 
 # Run it
 cd generated_mcp

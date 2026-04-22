@@ -210,7 +210,6 @@ def show_chart(
 
     chart_classes = {"bar": BarChart, "line": LineChart, "area": AreaChart, "pie": PieChart}
     ChartClass = chart_classes.get(chart_type, BarChart)
-    series = [ChartSeries(data_key=y["key"], label=y.get("label", y["key"])) for y in y_axes]
 
     with Column(gap=5, css_class="p-6 max-w-4xl") as view:
         Heading(title)
@@ -218,7 +217,16 @@ def show_chart(
             Muted(subtitle)
         with Card():
             with CardContent(css_class="pt-4"):
-                ChartClass(data=data, series=series, x_axis=x_axis, show_legend=True)
+                if chart_type == "pie":
+                    # PieChart uses data_key (numeric) + name_key (label) instead of series/x_axis
+                    data_key = y_axes[0]["key"] if y_axes else "value"
+                    PieChart(data=data, data_key=data_key, name_key=x_axis, show_legend=True)
+                else:
+                    series = [
+                        ChartSeries(data_key=y["key"], label=y.get("label", y["key"]))
+                        for y in y_axes
+                    ]
+                    ChartClass(data=data, series=series, x_axis=x_axis, show_legend=True)
 
     return PrefabApp(view=view)
 

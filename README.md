@@ -2,6 +2,7 @@
 
 **🚀 OpenAPI to FastMCP 3.x Server Generator**
 
+[![PyPI](https://img.shields.io/pypi/v/mcp-generator)](https://pypi.org/project/mcp-generator/)
 [![GitHub Release](https://img.shields.io/github/v/release/quotentiroler/mcp-generator-3.x?label=version)](https://github.com/quotentiroler/mcp-generator-3.x/releases)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.11+](https://img.shields.io/badge/python-v3.11-3776ab.svg)](https://www.python.org/downloads/)
@@ -112,36 +113,26 @@ All features are configurable via the generated `fastmcp.json`:
 ### Prerequisites
 
 - **Python 3.11+**: Required for modern type hints and features
-- **uv** (recommended) or **pip**: For dependency management
 - **OpenAPI Specification**: Your API's OpenAPI 3.0.x or 3.1.x spec file (JSON or YAML)
 
-### Install with uv (Recommended)
+### Install from PyPI (Recommended)
 
 ```bash
-# Clone the repository
-git clone https://github.com/quotentiroler/mcp-generator-3.x.git
-cd mcp-generator-3.x
+pip install mcp-generator
 
-# Install dependencies
-uv sync
+# Or with uv
+uv pip install mcp-generator
 
 # Verify installation
-uv run generate-mcp --help
+generate-mcp --help
 ```
 
-### Install with pip
+### Install from Source
 
 ```bash
-# Clone the repository
 git clone https://github.com/quotentiroler/mcp-generator-3.x.git
 cd mcp-generator-3.x
-
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install dependencies
-pip install -e .
+uv sync   # or: pip install -e .
 
 # Verify installation
 generate-mcp --help
@@ -155,13 +146,13 @@ generate-mcp --help
 
 ```bash
 # Using local file (default: ./openapi.json)
-uv run generate-mcp
+generate-mcp
 
 # Using custom file
-uv run generate-mcp --file ./my-api-spec.yaml
+generate-mcp --file ./my-api-spec.yaml
 
 # Download from URL
-uv run generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
+generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
 ```
 
 **What happens:**
@@ -180,31 +171,31 @@ By default, the generator creates a minimal, production-ready server. Enable add
 
 ```bash
 # Enable persistent storage (for OAuth tokens, session state)
-uv run generate-mcp --enable-storage
+generate-mcp --enable-storage
 
 # Enable response caching (reduces backend API calls)
-uv run generate-mcp --enable-storage --enable-caching
+generate-mcp --enable-storage --enable-caching
 
 # Enable MCP resources (expose API data as resources)
-uv run generate-mcp --enable-resources
+generate-mcp --enable-resources
 
 # Enable MCP Apps (interactive UI: tables, charts, forms, detail views)
-uv run generate-mcp --enable-apps
+generate-mcp --enable-apps
 
 # Enable MCP Apps with API-specific display tools from response schemas
-uv run generate-mcp --enable-apps --generate-ui
+generate-mcp --enable-apps --generate-ui
 
 # Enable all features
-uv run generate-mcp --enable-storage --enable-caching --enable-resources --enable-apps --generate-ui
+generate-mcp --enable-storage --enable-caching --enable-resources --enable-apps --generate-ui
 
 # Apply an OpenAPI Overlay to enhance descriptions before generation
-uv run generate-mcp --overlay my-overlay.yaml
+generate-mcp --overlay my-overlay.yaml
 
 # Auto-generate an overlay from the spec (no manual file needed)
-uv run generate-mcp --auto-overlay
+generate-mcp --auto-overlay
 
 # Generate an A2A agent card and adapter alongside the MCP server
-uv run generate-mcp --enable-a2a
+generate-mcp --enable-a2a
 ```
 
 **Available Features:**
@@ -230,16 +221,16 @@ uv run generate-mcp --enable-a2a
 
 The generator will show which features are available at the end of generation with a copy-paste command to re-generate with features enabled.
 
-💡 **Tip**: Run `uv run generate-mcp --help` to see all available options and examples.
+💡 **Tip**: Run `generate-mcp --help` to see all available options and examples.
 
 ### 2. Register Your MCP Server
 
 ```bash
 # Register the generated server
-uv run register-mcp ./generated_mcp
+register-mcp ./generated_mcp
 
 # Verify registration
-uv run run-mcp --list
+run-mcp --list
 ```
 
 This adds your server to the local registry at `~/.mcp-generator/servers.json` so you can easily run it by name.
@@ -248,11 +239,11 @@ This adds your server to the local registry at `~/.mcp-generator/servers.json` s
 
 ```bash
 # Option 1: Run via registry (STDIO mode for local AI clients)
-export BACKEND_API_TOKEN="your-api-token-here"  # On Windows: set BACKEND_API_TOKEN=...
-uv run run-mcp swagger_petstore_openapi
+export API_TOKEN="your-api-token-here"  # On Windows: set API_TOKEN=...
+run-mcp swagger_petstore_openapi
 
 # Option 2: Run via registry (HTTP mode)
-uv run run-mcp swagger_petstore_openapi --mode http --port 8000
+run-mcp swagger_petstore_openapi --mode http --port 8000
 
 # Option 3: Run directly with Python
 cd generated_mcp
@@ -261,9 +252,9 @@ python swagger_petstore_openapi_mcp_generated.py --transport stdio
 # Option 4: Run with FastMCP CLI
 cd generated_mcp
 # Note: Use :create_server to properly compose the server
-uv run fastmcp run swagger_petstore_openapi_mcp_generated.py:create_server
+fastmcp run swagger_petstore_openapi_mcp_generated.py:create_server
 # Or with fastmcp.json config:
-uv run fastmcp run fastmcp.json
+fastmcp run fastmcp.json
 ```
 
 ### 4. Use with AI Clients
@@ -279,7 +270,7 @@ Add to `~/.claude/claude_desktop_config.json`:
       "command": "python",
       "args": ["/path/to/generated_mcp/swagger_petstore_openapi_mcp_generated.py"],
       "env": {
-        "BACKEND_API_TOKEN": "your-api-token-here"
+        "API_TOKEN": "your-api-token-here"
       }
     }
   }
@@ -296,17 +287,17 @@ The [MCP Inspector](https://github.com/modelcontextprotocol/inspector) is the of
 
 ```bash
 # Generate your MCP server first
-uv run generate-mcp --file ./openapi.json
+generate-mcp --file ./openapi.json
 
 # Test with Inspector using FastMCP (recommended)
 cd generated_mcp
-uv run fastmcp dev swagger_petstore_openapi_mcp_generated.py:create_server
+fastmcp dev swagger_petstore_openapi_mcp_generated.py:create_server
 
 # Or test directly with Python
 npx @modelcontextprotocol/inspector python swagger_petstore_openapi_mcp_generated.py
 
 # Or use environment variables
-npx @modelcontextprotocol/inspector -e BACKEND_API_TOKEN=your-token python swagger_petstore_openapi_mcp_generated.py
+npx @modelcontextprotocol/inspector -e API_TOKEN=your-token python swagger_petstore_openapi_mcp_generated.py
 ```
 
 > **Note**: When using `fastmcp dev` or `fastmcp run`, always include `:create_server` to properly compose the modular server architecture.
@@ -358,7 +349,7 @@ npx @modelcontextprotocol/inspector --cli python swagger_petstore_openapi_mcp_ge
 
 # Test with environment variables
 npx @modelcontextprotocol/inspector --cli \
-  -e BACKEND_API_TOKEN=your-token \
+  -e API_TOKEN=your-token \
   python swagger_petstore_openapi_mcp_generated.py \
   --method tools/list
 ```
@@ -394,7 +385,7 @@ Example exported config:
       "command": "python",
       "args": ["swagger_petstore_openapi_mcp_generated.py"],
       "env": {
-        "BACKEND_API_TOKEN": "your-token"
+        "API_TOKEN": "your-token"
       }
     }
   }
@@ -407,21 +398,21 @@ Integrate Inspector into your development cycle:
 
 ```bash
 # 1. Generate server from OpenAPI spec
-uv run generate-mcp --file ./openapi.yaml
+generate-mcp --file ./openapi.yaml
 
 # 2. Test with Inspector UI (interactive development)
 cd generated_mcp
-npx @modelcontextprotocol/inspector -e BACKEND_API_TOKEN=test python *_mcp_generated.py
+npx @modelcontextprotocol/inspector -e API_TOKEN=test python *_mcp_generated.py
 
 # 3. Automated testing (CI/CD)
 npx @modelcontextprotocol/inspector --cli \
-  -e BACKEND_API_TOKEN=test \
+  -e API_TOKEN=test \
   python *_mcp_generated.py \
   --method tools/list > tools.json
 
 # 4. Test specific tools
 npx @modelcontextprotocol/inspector --cli \
-  -e BACKEND_API_TOKEN=test \
+  -e API_TOKEN=test \
   python *_mcp_generated.py \
   --method tools/call \
   --tool-name get_user \
@@ -451,10 +442,10 @@ MCP Apps bring rich, interactive UI to MCP tool responses. Instead of returning 
 
 ```bash
 # Curated display tools only (works with any API)
-uv run generate-mcp --enable-apps
+generate-mcp --enable-apps
 
 # + API-specific display tools auto-generated from response schemas
-uv run generate-mcp --enable-apps --generate-ui
+generate-mcp --enable-apps --generate-ui
 ```
 
 ### Display Tool Types
@@ -493,13 +484,13 @@ This project installs three CLI commands. Here's a quick cheatsheet.
 
 ```bash
 # Use local file (default)
-uv run generate-mcp
+generate-mcp
 
 # Custom file
-uv run generate-mcp --file ./my-api.yaml
+generate-mcp --file ./my-api.yaml
 
 # From URL
-uv run generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
+generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
 ```
 
 ### register-mcp
@@ -516,22 +507,22 @@ uv run generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
 
 ```bash
 # Add (explicit)
-uv run register-mcp add ./generated_mcp
+register-mcp add ./generated_mcp
 
 # Add (implicit)
-uv run register-mcp ./generated_mcp
+register-mcp ./generated_mcp
 
 # List registered servers
-uv run register-mcp list
+register-mcp list
 
 # List as JSON
-uv run register-mcp list --json
+register-mcp list --json
 
 # Remove by name
-uv run register-mcp remove swagger_petstore_openapi
+register-mcp remove swagger_petstore_openapi
 
 # Export server metadata for publishing
-uv run register-mcp export swagger_petstore_openapi -o server.json
+register-mcp export swagger_petstore_openapi -o server.json
 ```
 
 ### run-mcp
@@ -547,21 +538,21 @@ uv run register-mcp export swagger_petstore_openapi -o server.json
 
 ```bash
 # List servers
-uv run run-mcp --list
+run-mcp --list
 
 # Run via STDIO (Linux/macOS)
-export BACKEND_API_TOKEN="your-api-token" && uv run run-mcp swagger_petstore_openapi
+export API_TOKEN="your-api-token" && run-mcp swagger_petstore_openapi
 
 # Run via STDIO (Windows PowerShell)
 powershell
-$env:BACKEND_API_TOKEN = "your-api-token"
-uv run run-mcp swagger_petstore_openapi
+$env:API_TOKEN = "your-api-token"
+run-mcp swagger_petstore_openapi
 
 # Run via HTTP
-uv run run-mcp swagger_petstore_openapi --mode http --port 8000
+run-mcp swagger_petstore_openapi --mode http --port 8000
 
 # HTTP with JWT validation
-uv run run-mcp swagger_petstore_openapi --mode http --port 8000 --validate-tokens
+run-mcp swagger_petstore_openapi --mode http --port 8000 --validate-tokens
 ```
 
 Notes:
@@ -686,13 +677,13 @@ uv run mypy mcp_generator/
 
 ```bash
 # Generate MCP server from example
-uv run generate-mcp --file openapi.yaml
+generate-mcp --file openapi.yaml
 
 # Validate OpenAPI spec
-uv run python mcp_generator/scripts/validate_openapi.py
+python mcp_generator/scripts/validate_openapi.py
 
 # Generate JWT keypair for testing
-uv run python mcp_generator/scripts/generate_jwt_keypair.py
+python mcp_generator/scripts/generate_jwt_keypair.py
 ```
 
 ---
@@ -703,7 +694,7 @@ uv run python mcp_generator/scripts/generate_jwt_keypair.py
 
 ```bash
 # Generate from Petstore API
-uv run generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
+generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
 
 # Run the server
 cd generated_mcp
@@ -714,7 +705,7 @@ python swagger_petstore_openapi_mcp_generated.py
 
 ```bash
 # Download GitHub OpenAPI spec
-uv run generate-mcp --url https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json
+generate-mcp --url https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json
 
 # Outputs: 300+ tools for GitHub API operations
 ```

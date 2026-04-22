@@ -18,10 +18,10 @@ flowchart LR
 
 ## Backend Token Forwarding (Default)
 
-By default, the generated server forwards the `BACKEND_API_TOKEN` environment variable to the backend API. This is the simplest setup:
+By default, the generated server forwards the `API_TOKEN` environment variable to the backend API. This is the simplest setup:
 
 ```bash
-export BACKEND_API_TOKEN="your-api-token-here"
+export API_TOKEN="your-api-token-here"
 python server_mcp_generated.py --transport stdio
 ```
 
@@ -107,7 +107,7 @@ npx @modelcontextprotocol/inspector python server_mcp_generated.py
 
 # With token
 npx @modelcontextprotocol/inspector \
-  -e BACKEND_API_TOKEN=your-token \
+  -e API_TOKEN=your-token \
   python server_mcp_generated.py
 ```
 

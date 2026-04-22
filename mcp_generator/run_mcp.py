@@ -96,7 +96,7 @@ def main() -> int:
             print("No MCP servers registered.")
             print(f"\nRegistry location: {get_registry_path()}")
             print("\nTo register a server:")
-            print("  uv run register-mcp /path/to/server")
+            print("  register-mcp /path/to/server")
             return 0
 
         print("Registered MCP Servers:")
@@ -109,7 +109,7 @@ def main() -> int:
                 print(f"    Description: {info['description']}")
         print(f"\n{'=' * 70}")
         print(f"Registry location: {get_registry_path()}")
-        print("\nUsage: uv run run-mcp <server_name> [options]")
+        print("\nUsage: run-mcp <server_name> [options]")
         return 0
 
     # Require server name if not listing
@@ -125,9 +125,9 @@ def main() -> int:
                 print(f"  • {name}")
         else:
             print("  (none registered)")
-        print("\nUsage: uv run run-mcp <server_name> [options]")
-        print("       uv run run-mcp --list")
-        print("       uv run register-mcp /path/to/server")
+        print("\nUsage: run-mcp <server_name> [options]")
+        print("       run-mcp --list")
+        print("       register-mcp /path/to/server")
         return 1
 
     # Load and run the server

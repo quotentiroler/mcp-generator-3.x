@@ -67,6 +67,7 @@ def render_pyproject_template(
     # Build dependencies list
     dependencies = [
         "fastmcp[apps]>=3.2.0,<4.0.0" if enable_apps else "fastmcp>=3.2.0,<4.0.0",
+        "openapi-py-fetch>=0.2.0",
         "httpx>=0.23.0",
         "pydantic>=2.0.0,<3.0.0",
         "python-dateutil>=2.8.2",
@@ -308,15 +309,36 @@ def _render_tool(spec: ToolSpec) -> str:
     """Render tool function code from specification."""
     # Build function signature
     func_params = ["ctx: Context"]
+    # Detect body parameters (request body for POST/PUT) to support Form.from_model()
+    body_param = next((p for p in spec.parameters if p.name == "body"), None)
+    has_body = body_param is not None
+
     for param in spec.parameters:
-        if param.required:
+        if param.name == "body" and has_body:
+            # Make body optional so Form.from_model() can submit via data instead
+            func_params.append(f"{param.name}: str | None = None")
+        elif param.required:
             func_params.append(f"{param.name}: str")
         else:
             func_params.append(f"{param.name}: str | None = None")
 
+    # Add 'data' parameter for Form.from_model() integration
+    # When a prefab Form submits via CallTool, it sends {"data": {field: value, ...}}
+    if has_body:
+        func_params.append("data: str | dict | None = None")
+
     # Build parameter conversion code for Pydantic models
     param_conversion_code = ""
     pydantic_params = [p for p in spec.parameters if p.is_pydantic]
+
+    # Add data → body conversion for Form.from_model() support
+    if has_body:
+        param_conversion_code += """
+        # Form.from_model() sends field values under 'data' key via CallTool
+        if data and not body:
+            import json as _json
+            body = _json.dumps(data) if isinstance(data, dict) else data
+"""
 
     if pydantic_params:
         for param in pydantic_params:
@@ -364,7 +386,10 @@ def _render_tool(spec: ToolSpec) -> str:
         decorator = "@mcp.tool"
 
     # Build list of required parameter names for elicitation
-    required_param_names = [p.name for p in spec.parameters if p.required]
+    # When body has a data alternative (Form.from_model), body is not strictly required
+    required_param_names = [
+        p.name for p in spec.parameters if p.required and not (p.name == "body" and has_body)
+    ]
     required_params_literal = ", ".join([f'"{n}"' for n in required_param_names])
 
     code = f'''
@@ -380,7 +405,7 @@ async def {spec.tool_name}({", ".join(func_params)}) -> dict[str, Any]:
         # --- Elicitation: ask user for missing required parameters ---
         _required = [{required_params_literal}]
         _locals = locals()
-        _missing = [p for p in _required if not _locals.get(p)]
+        _missing = [p for p in _required if _locals.get(p) is None]
         if _missing:
             try:
                 _elicit_msg = f"Missing required parameter(s) for {spec.tool_name}: {{', '.join(_missing)}}. Please provide values."
@@ -531,7 +556,10 @@ def generate_resource_for_endpoint(
     # /store/order/{orderId} -> order://{orderId}
 
     # Extract resource name from path (use last segment or operation_id)
-    path_segments = [seg for seg in path.split("/") if seg and not seg.startswith("{")]
+    # Filter out wildcards (*) which are catch-all routes, not meaningful segments
+    path_segments = [
+        seg for seg in path.split("/") if seg and not seg.startswith("{") and seg != "*"
+    ]
 
     if not path_segments:
         # Path is only parameters (unusual), use operation_id
@@ -539,6 +567,16 @@ def generate_resource_for_endpoint(
     else:
         # Use last meaningful segment
         resource_name = path_segments[-1]
+
+    # Keep original for URI scheme (hyphens/dots are valid in URI schemes)
+    uri_scheme = resource_name.lower()
+    # Sanitize for Python identifier usage (function name)
+    resource_name = camel_to_snake(resource_name)
+    if not resource_name:
+        resource_name = camel_to_snake(operation_id) or "resource"
+    # Fallback URI scheme if original was purely non-alphanumeric
+    if not uri_scheme or not any(c.isalnum() for c in uri_scheme):
+        uri_scheme = resource_name
 
     # Build URI template
     # Replace /segment/{param} with scheme://segment/{param}
@@ -559,10 +597,10 @@ def generate_resource_for_endpoint(
 
     if query_param_names:
         query_str = "{?" + ",".join(query_param_names) + "}"
-        uri_template = f"{resource_name}://{uri_path}{query_str}"
+        uri_template = f"{uri_scheme}://{uri_path}{query_str}"
     elif path_params:
         # Has path params but no query params
-        uri_template = f"{resource_name}://{uri_path}"
+        uri_template = f"{uri_scheme}://{uri_path}"
     else:
         # No parameters at all - FastMCP will reject
         return None
@@ -613,29 +651,43 @@ def generate_resource_for_endpoint(
 def render_resource(spec: ResourceSpec) -> str:
     """Render resource template function code from specification."""
 
+    def _safe_identifier(name: str) -> str:
+        """Sanitize a parameter name to a valid Python identifier."""
+        safe = name.replace("-", "_").replace(".", "_")
+        if safe.isidentifier() and not __import__("keyword").iskeyword(safe):
+            return safe
+        return f"param_{safe}"
+
     # Build function parameters (path params + query params)
     func_params = ["ctx: Context"]
 
+    # Map original param names to safe Python identifiers
+    path_param_map: dict[str, str] = {}
     for param in spec.path_params:
-        func_params.append(f"{param}: str")
+        safe = _safe_identifier(param)
+        path_param_map[param] = safe
+        func_params.append(f"{safe}: str")
 
     # FastMCP requires ALL query parameters to be optional with default values
+    query_param_map: dict[str, str] = {}
     for qparam in spec.query_params:
-        # All query params must have defaults for FastMCP resource templates
-        default_val = "None" if "str" in qparam.type_hint else "0"
-        func_params.append(f"{qparam.name}: {qparam.type_hint} | None = {default_val}")
+        safe = _safe_identifier(qparam.name)
+        query_param_map[qparam.name] = safe
+        func_params.append(f"{safe}: {qparam.type_hint} | None = None")
 
-    # Build method call arguments
+    # Build method call arguments (use original names for API calls)
     call_args_list = []
     for param in spec.path_params:
-        call_args_list.append(f"{param}={param}")
+        safe = path_param_map[param]
+        call_args_list.append(f"{param}={safe}" if param == safe else f"{safe}={safe}")
     for qparam in spec.query_params:
-        call_args_list.append(f"{qparam.name}={qparam.name}")
+        safe = query_param_map[qparam.name]
+        call_args_list.append(f"{qparam.name}={safe}" if qparam.name == safe else f"{safe}={safe}")
 
     call_args = ", ".join(call_args_list) if call_args_list else ""
 
     # Build docstring
-    param_docs = "\n    ".join([f"{p}: Path parameter" for p in spec.path_params])
+    param_docs = "\n    ".join([f"{path_param_map[p]}: Path parameter" for p in spec.path_params])
     if spec.query_params:
         param_docs += "\n    " + "\n    ".join(
             [f"{qp.name}: {qp.description or 'Query parameter'}" for qp in spec.query_params]
@@ -732,16 +784,13 @@ import sys
 
 from fastmcp import FastMCP, Context
 
-# Add the generated folder to the Python path so we can importopenapi_client
+# Add the generated folder to the Python path so we can import openapi_client
 generated_path = Path(__file__).parent.parent.parent / "generated_openapi"
 if str(generated_path) not in sys.path:
     sys.path.insert(0, str(generated_path))
 
-from openapi_client import (
-    ApiClient,
-    ApiException,
-    {api_class_name},
-)
+from openapi_py_fetch import ApiClient, ApiException
+from openapi_client import {api_class_name}
 
 logger = logging.getLogger(__name__)
 

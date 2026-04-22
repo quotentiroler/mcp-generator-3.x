@@ -13,6 +13,7 @@ from typing import Any
 from .models import (
     ApiMetadata,
     DisplayEndpoint,
+    FormEndpoint,
     OAuthConfig,
     OAuthFlowConfig,
     ResponseField,
@@ -222,7 +223,15 @@ def get_api_metadata(base_dir: Path | None = None) -> ApiMetadata:
                 additional_metadata["contact"] = info.get("contact", {})
                 additional_metadata["license"] = info.get("license", {})
                 additional_metadata["terms_of_service"] = info.get("termsOfService")
-                additional_metadata["servers"] = spec.get("servers", [])
+
+                # Build servers list: OpenAPI 3.x uses "servers", Swagger 2.0 uses host/basePath/schemes
+                servers = spec.get("servers", [])
+                if not servers and spec.get("host"):
+                    scheme = (spec.get("schemes") or ["https"])[0]
+                    base_path = spec.get("basePath", "")
+                    servers = [{"url": f"{scheme}://{spec['host']}{base_path}"}]
+                additional_metadata["servers"] = servers
+
                 additional_metadata["external_docs"] = spec.get("externalDocs", {})
                 additional_metadata["tags"] = spec.get("tags", [])
 
@@ -277,9 +286,13 @@ def get_security_config(base_dir: Path | None = None) -> SecurityConfig:
         print("   Using default security configuration")
         return SecurityConfig()
 
-    # Extract security schemes from components
+    # Extract security schemes from components (OpenAPI 3.x) or securityDefinitions (Swagger 2.0)
     components = spec.get("components", {})
     security_schemes = components.get("securitySchemes", {})
+
+    # Swagger 2.0 fallback
+    if not security_schemes:
+        security_schemes = spec.get("securityDefinitions", {})
 
     if not security_schemes:
         return SecurityConfig()
@@ -385,9 +398,29 @@ def get_resource_endpoints(base_dir: Path | None = None) -> dict[str, list[dict[
         path_params = []
         query_params = []
 
-        for param in get_op.get("parameters", []):
+        # Merge path-level + operation-level parameters (operation takes precedence)
+        all_params = list(path_item.get("parameters", []))
+        for op_param in get_op.get("parameters", []):
+            all_params.append(op_param)
+        # Deduplicate: keep operation-level params, skip path-level if same name
+        seen_names: set[str] = set()
+        deduped_params = []
+        for param in reversed(all_params):
+            # Resolve $ref parameters
+            if "$ref" in param:
+                param = _resolve_ref(spec, param["$ref"])
+            name = param.get("name")
+            if name and name not in seen_names:
+                seen_names.add(name)
+                deduped_params.append(param)
+        deduped_params.reverse()
+
+        for param in deduped_params:
             param_name = param.get("name")
             param_in = param.get("in")
+
+            if not param_name:
+                continue
 
             if param_in == "path":
                 path_params.append(param_name)
@@ -506,6 +539,11 @@ def _parse_schema_fields(
         prop_type = resolved_prop.get("type", "string")
         fmt = resolved_prop.get("format", "")
 
+        # OpenAPI 3.1: nullable types use type: ["string", "null"]
+        if isinstance(prop_type, list):
+            non_null = [t for t in prop_type if t != "null"]
+            prop_type = non_null[0] if non_null else "string"
+
         # Enum
         enum_values = resolved_prop.get("enum", [])
         is_enum = bool(enum_values)
@@ -551,6 +589,10 @@ def _extract_response_schema(
     success_resp = responses.get("200", responses.get("201", responses.get("default")))
     if not success_resp:
         return None
+
+    # Resolve response-level $ref (e.g. {"$ref": "#/components/responses/PetResponse"})
+    if "$ref" in success_resp:
+        success_resp = _resolve_ref(spec, success_resp["$ref"])
 
     content = success_resp.get("content", {})
     json_content = content.get("application/json", content.get("*/*", {}))
@@ -631,7 +673,23 @@ def get_display_endpoints(base_dir: Path | None = None) -> dict[str, list[Displa
 
         path_params = []
         query_params = []
-        for param in get_op.get("parameters", []):
+
+        # Merge path-level + operation-level params; resolve $ref; deduplicate
+        all_display_params = list(path_item.get("parameters", []))
+        for op_param in get_op.get("parameters", []):
+            all_display_params.append(op_param)
+        seen_display: set[str] = set()
+        deduped_display: list[dict[str, Any]] = []
+        for param in reversed(all_display_params):
+            if "$ref" in param:
+                param = _resolve_ref(spec, param["$ref"])
+            name = param.get("name")
+            if name and name not in seen_display:
+                seen_display.add(name)
+                deduped_display.append(param)
+        deduped_display.reverse()
+
+        for param in deduped_display:
             p_in = param.get("in")
             if p_in == "path":
                 path_params.append(
@@ -667,3 +725,103 @@ def get_display_endpoints(base_dir: Path | None = None) -> dict[str, list[Displa
         endpoints_by_tag[primary_tag].append(endpoint)
 
     return endpoints_by_tag
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: Request body schema extraction for form generation
+# ---------------------------------------------------------------------------
+
+
+def _extract_request_body_schema(
+    operation: dict[str, Any], spec: dict[str, Any]
+) -> tuple[str, list[ResponseField], list[str]] | None:
+    """Extract the request body schema from a POST/PUT operation.
+
+    Returns:
+        (schema_name, fields, required_field_names) or None if no parseable body.
+    """
+    request_body = operation.get("requestBody", {})
+    content = request_body.get("content", {})
+
+    # Prefer JSON content type
+    json_content = content.get("application/json", content.get("*/*", {}))
+    schema = json_content.get("schema", {})
+    if not schema:
+        return None
+
+    schema_name = ""
+    if "$ref" in schema:
+        schema_name = _ref_name(schema["$ref"])
+        schema = _resolve_ref(spec, schema["$ref"])
+
+    if schema.get("type") != "object" and "properties" not in schema:
+        return None
+
+    fields = _parse_schema_fields(schema, spec)
+    if not fields:
+        return None
+
+    required_names = schema.get("required", [])
+    return schema_name, fields, required_names
+
+
+def get_form_endpoints(base_dir: Path | None = None) -> dict[str, list[FormEndpoint]]:
+    """Extract POST/PUT endpoints with request body schemas for form generation.
+
+    Returns:
+        Dictionary mapping tag names to lists of FormEndpoint.
+    """
+    if base_dir is None:
+        base_dir = Path.cwd()
+
+    openapi_path = _find_openapi_spec(base_dir)
+    if not openapi_path or not openapi_path.exists():
+        return {}
+
+    spec = _load_openapi_spec(openapi_path)
+    if not spec or "paths" not in spec:
+        return {}
+
+    enrich_spec_tags(spec)
+    forms_by_tag: dict[str, list[FormEndpoint]] = {}
+
+    for path, path_item in spec.get("paths", {}).items():
+        for method in ("post", "put"):
+            if method not in path_item:
+                continue
+
+            op = path_item[method]
+            operation_id = op.get("operationId")
+            if not operation_id:
+                continue
+
+            result = _extract_request_body_schema(op, spec)
+            if result is None:
+                continue
+
+            schema_name, fields, required_names = result
+
+            tags = op.get("tags", ["default"])
+            primary_tag = tags[0] if tags else "default"
+
+            # Build MCP tool name: {Tag}_{snake_case_op} matching namespace mount
+            snake_op = camel_to_snake(operation_id)
+            tool_name = f"{primary_tag.title()}_{snake_op}"
+
+            endpoint = FormEndpoint(
+                operation_id=operation_id,
+                path=path,
+                http_method=method,
+                summary=op.get("summary", ""),
+                tag=primary_tag,
+                schema_name=schema_name,
+                fields=fields,
+                required_fields=required_names,
+                tool_name=tool_name,
+            )
+
+            if primary_tag not in forms_by_tag:
+                forms_by_tag[primary_tag] = []
+            forms_by_tag[primary_tag].append(endpoint)
+
+    return forms_by_tag

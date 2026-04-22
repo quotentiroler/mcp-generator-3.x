@@ -58,7 +58,7 @@ except ImportError as e:
         print(f"   Looked in: {generated_mcp_dir}")
         print(f"   Storage exists: {(generated_mcp_dir / 'storage.py').exists()}")
         print(f"   Middleware dir exists: {(generated_mcp_dir / 'middleware').exists()}")
-        print("   Run with: uv run generate-mcp --enable-storage")
+        print("   Run with: generate-mcp --enable-storage")
         sys.exit(0)
 
 

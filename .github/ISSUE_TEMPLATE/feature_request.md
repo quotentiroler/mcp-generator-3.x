@@ -30,7 +30,7 @@ A clear and concise description of what you want to happen.
 
 ```bash
 # How you'd like to use the feature
-uv run generate-mcp --feature new-option
+generate-mcp --feature new-option
 ```
 
 Or code example:

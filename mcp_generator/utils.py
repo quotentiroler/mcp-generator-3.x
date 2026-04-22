@@ -25,7 +25,7 @@ def normalize_version(version: str) -> str:
     # Convert: X.Y.Z-alpha.A.B -> X.Y.Za0+A.B
     # Convert: X.Y.Z-beta.A.B -> X.Y.Zb0+A.B
 
-    # Match version-prerelease.rest pattern
+    # Match version-prerelease.rest pattern (with local part after dot)
     match = re.match(r"^(\d+\.\d+\.\d+)-([a-z]+)\.(.+)$", version)
     if match:
         base_version, prerelease, local = match.groups()
@@ -42,6 +42,19 @@ def normalize_version(version: str) -> str:
 
         # PEP 440 format: base_version + prerelease_short + 0 + '+' + local
         return f"{base_version}{prerelease_short}0+{local}"
+
+    # Match simple prerelease without local part (e.g. "1.0.0-alpha", "2.0.0-beta")
+    match = re.match(r"^(\d+\.\d+\.\d+)-([a-z]+)$", version)
+    if match:
+        base_version, prerelease = match.groups()
+        prerelease_map = {
+            "alpha": "a",
+            "beta": "b",
+            "rc": "rc",
+            "dev": "dev",
+        }
+        prerelease_short = prerelease_map.get(prerelease, prerelease[:1])
+        return f"{base_version}{prerelease_short}0"
 
     # If no match, return as-is (already valid or will fail validation)
     return version
@@ -127,9 +140,30 @@ def sanitize_name(name: str) -> str:
 
 
 def camel_to_snake(name: str) -> str:
-    """Convert CamelCase to snake_case."""
+    """Convert CamelCase to snake_case.
+
+    Handles consecutive uppercase letters (acronyms) correctly:
+        HTMLParser -> html_parser
+        APIClient  -> api_client
+        PetApi     -> pet_api
+
+    Also sanitizes special characters to produce valid Python identifiers:
+        getAppsByApp* -> get_apps_by_app
+        getDocs-api   -> get_docs_api
+    """
+    # Insert _ between consecutive uppercase followed by uppercase+lowercase (e.g. HTMLParser -> HTML_Parser)
+    name = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", name)
+    # Insert _ between lowercase/digit and uppercase (e.g. getResponse -> get_Response)
     name = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
-    return name.lower()
+    name = name.lower()
+    # Replace non-alphanumeric characters (hyphens, asterisks, dots, etc.) with underscores
+    name = re.sub(r"[^a-z0-9_]", "_", name)
+    # Collapse consecutive underscores and strip leading/trailing
+    name = re.sub(r"_+", "_", name).strip("_")
+    # Ensure it doesn't start with a digit
+    if name and name[0].isdigit():
+        name = f"n{name}"
+    return name
 
 
 def get_pydantic_model_schema(model_class: Any) -> dict[str, Any] | None:

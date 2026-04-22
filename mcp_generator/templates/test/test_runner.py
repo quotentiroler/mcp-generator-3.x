@@ -30,12 +30,12 @@ This script:
 4. Cleans up and reports results
 """
 
-import subprocess
-import time
-import sys
 import os
-import signal
+import subprocess
+import sys
+import time
 from pathlib import Path
+
 import httpx
 
 # Ensure UTF-8 encoding for Windows console
@@ -162,7 +162,7 @@ def run_tests(test_filter: str | None = None):
 
     # Add any required environment variables
     # For authenticated APIs, you might need:
-    # server_env["BACKEND_API_TOKEN"] = "your-token-here"
+    # server_env["API_TOKEN"] = "your-token-here"
 
     # Start the server directly with Python
     # Use PIPE to capture output for debugging when startup fails
@@ -225,7 +225,7 @@ def run_tests(test_filter: str | None = None):
             try:
                 while not output_queue.empty():
                     recent_output.append(output_queue.get_nowait())
-            except:
+            except Exception:
                 pass
 
             if recent_output:
@@ -360,8 +360,11 @@ def main():
 
     # Check dependencies
     try:
-        import pytest
-        import httpx
+        import importlib.util
+
+        for _dep in ("pytest", "httpx"):
+            if importlib.util.find_spec(_dep) is None:
+                raise ImportError(name=_dep)
     except ImportError as e:
         print(f"❌ Missing required dependency: {{e.name}}")
         print("\\nInstall test dependencies:")

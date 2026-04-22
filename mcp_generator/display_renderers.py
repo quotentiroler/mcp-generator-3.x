@@ -7,7 +7,7 @@ that render API responses as interactive Prefab UI components.
 
 from __future__ import annotations
 
-from .models import DisplayEndpoint, ResponseField
+from .models import DisplayEndpoint, FormEndpoint, ResponseField
 from .utils import camel_to_snake
 
 # ---------------------------------------------------------------------------
@@ -320,6 +320,106 @@ def {func_name}({params_str}) -> Any:
 
 
 # ---------------------------------------------------------------------------
+# Code generation: Pydantic models + Form.from_model() tools
+# ---------------------------------------------------------------------------
+
+_FIELD_TYPE_MAP: dict[str, str] = {
+    "str": "str",
+    "int": "int",
+    "float": "float",
+    "bool": "bool",
+    "list": "list",
+    "dict": "dict",
+}
+
+
+def _pydantic_field_def(field: ResponseField, required_fields: list[str]) -> str:
+    """Generate a single Pydantic Field() definition from a ResponseField."""
+    ftype = _FIELD_TYPE_MAP.get(field.python_type, "str")
+    is_required = field.name in required_fields
+
+    kwargs: list[str] = []
+
+    # Title for form label
+    label = field.name.replace("_", " ").title()
+    kwargs.append(f'title="{label}"')
+
+    # Description for placeholder
+    if field.description:
+        safe_desc = field.description.replace('"', '\\"')
+        kwargs.append(f'description="{safe_desc}"')
+
+    # Default value for optional fields
+    if not is_required:
+        kwargs.append("default=None")
+        ftype = f"{ftype} | None"
+
+    # Enum → Literal type
+    if field.is_enum and field.enum_values:
+        vals = ", ".join(f'"{v}"' for v in field.enum_values)
+        ftype = f"Literal[{vals}]"
+        if not is_required:
+            ftype = f"Literal[{vals}] | None"
+
+    kwargs_str = ", ".join(kwargs)
+    return f"    {field.name}: {ftype} = Field({kwargs_str})"
+
+
+def _render_pydantic_model(form: FormEndpoint) -> str:
+    """Generate a Pydantic model class from a FormEndpoint's fields."""
+    # Use operation_id to ensure uniqueness (same schema can be used by add/update)
+    op_name = camel_to_snake(form.operation_id).title().replace("_", "")
+    class_name = f"{op_name}Form"
+
+    field_lines = []
+    for f in form.fields:
+        # Skip arrays and nested objects — Form.from_model can't handle them
+        if f.is_array or f.is_nested_object:
+            continue
+        field_lines.append(_pydantic_field_def(f, form.required_fields))
+
+    if not field_lines:
+        return ""
+
+    fields_code = "\n".join(field_lines)
+    return f'''
+class {class_name}(BaseModel):
+    """{form.summary or f"{form.schema_name} form data."}"""
+{fields_code}
+'''
+
+
+def _render_form_tool(form: FormEndpoint) -> str:
+    """Generate a display tool that renders a Form.from_model() for a POST/PUT endpoint."""
+    op_name = camel_to_snake(form.operation_id).title().replace("_", "")
+    class_name = f"{op_name}Form"
+    func_name = f"form_{camel_to_snake(form.operation_id)}"
+    summary = form.summary or f"Submit {form.schema_name or 'data'}"
+    action = "Create" if form.http_method == "post" else "Update"
+    submit_label = f"{action} {form.schema_name}" if form.schema_name else "Submit"
+
+    return f'''
+@mcp.tool(
+    app=True if PREFAB_AVAILABLE else False,
+    tags=["display", "{form.tag}"],
+    description="""{summary}""",
+)
+def {func_name}() -> Any:
+    """{summary}"""
+    if not PREFAB_AVAILABLE:
+        return {{"form": "{class_name}", "submit_tool": "{form.tool_name}"}}
+
+    return PrefabApp(
+        view=Form.from_model(
+            {class_name},
+            on_submit=CallTool("{form.tool_name}"),
+            submit_label="{submit_label}",
+        )
+    )
+'''
+
+
+# ---------------------------------------------------------------------------
 # Module assembly
 # ---------------------------------------------------------------------------
 
@@ -329,6 +429,7 @@ def render_display_module(
     endpoints: list[DisplayEndpoint],
     api_var_name: str,
     api_class_name: str,
+    form_endpoints: list[FormEndpoint] | None = None,
 ) -> str:
     """Generate a complete display module file for a tag (e.g. pet_display.py).
 
@@ -337,6 +438,7 @@ def render_display_module(
         endpoints: Display endpoints belonging to this tag
         api_var_name: API variable name (e.g. "pet_api")
         api_class_name: API class name (e.g. "PetApi")
+        form_endpoints: Optional POST/PUT endpoints for form generation
     """
     module_name = tag.title().replace("_", "")
 
@@ -350,11 +452,38 @@ def render_display_module(
         elif schema.is_object:
             tool_code_blocks.append(_render_detail_tool(ep, api_var_name))
 
-    if not tool_code_blocks:
+    # Generate Pydantic models and form tools
+    model_code_blocks = []
+    form_tool_blocks = []
+    has_forms = False
+    if form_endpoints:
+        for fe in form_endpoints:
+            model_code = _render_pydantic_model(fe)
+            if model_code:
+                model_code_blocks.append(model_code)
+                form_tool_blocks.append(_render_form_tool(fe))
+                has_forms = True
+
+    if not tool_code_blocks and not form_tool_blocks:
         return ""
 
     tools_code = "\n".join(tool_code_blocks)
+    models_code = "\n".join(model_code_blocks)
+    forms_code = "\n".join(form_tool_blocks)
     variants_repr = repr(_STATUS_VARIANTS)
+
+    # Extra imports needed for form generation
+    form_imports = ""
+    if has_forms:
+        form_imports = """
+from typing import Literal
+from pydantic import BaseModel, Field
+try:
+    from prefab_ui.components import Form
+    from prefab_ui.actions.mcp import CallTool
+except ImportError:
+    pass
+"""
 
     header = f'''"""
 {module_name} Display Tools — API-specific UI views.
@@ -376,7 +505,8 @@ generated_path = Path(__file__).parent.parent.parent / "generated_openapi"
 if str(generated_path) not in sys.path:
     sys.path.insert(0, str(generated_path))
 
-from openapi_client import ApiClient, ApiException, Configuration, {api_class_name}
+from openapi_py_fetch import ApiClient, ApiException, Configuration
+from openapi_client import {api_class_name}
 
 logger = logging.getLogger(__name__)
 
@@ -402,7 +532,7 @@ try:
     PREFAB_AVAILABLE = True
 except ImportError:
     PREFAB_AVAILABLE = False
-
+{form_imports}
 # Badge variant mapping for status / enum values
 _STATUS_VARIANTS = {variants_repr}
 
@@ -426,10 +556,10 @@ def _call_api(method_name: str, api_instance, **kwargs):
 def _get_api():
     \"\"\"Get an API instance using environment-based auth.\"\"\"
     config = Configuration()
-    base_url = os.environ.get("BACKEND_BASE_URL", "")
+    base_url = os.environ.get("API_BASE_URL", "")
     if base_url:
         config.host = base_url
-    token = os.environ.get("BACKEND_API_TOKEN", "")
+    token = os.environ.get("API_TOKEN", "")
     if token:
         config.access_token = token
     client = ApiClient(config)
@@ -442,4 +572,17 @@ def _get_api():
 # ============================================================================
 """
 
-    return header + helper + init_code + tools_code + "\n"
+    # Assemble: header + helper + init + models + display tools + form tools
+    parts = [header, helper, init_code]
+    if models_code:
+        parts.append(
+            "\n# ============================================================================\n# Pydantic models for form generation\n# ============================================================================\n"
+        )
+        parts.append(models_code)
+    parts.append(tools_code)
+    if forms_code:
+        parts.append(
+            "\n# ============================================================================\n# Form tools (auto-generated from request body schemas)\n# ============================================================================\n"
+        )
+        parts.append(forms_code)
+    return "\n".join(parts) + "\n"

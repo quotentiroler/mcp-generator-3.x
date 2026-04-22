@@ -121,6 +121,15 @@ def generate_main_composition_server(
     module_names = sorted(modules.keys())
     total_tool_count = sum(spec.tool_count for spec in modules.values())
 
+    # Sanitize metadata for safe embedding in generated Python string literals
+    from dataclasses import replace as _dc_replace
+
+    api_metadata = _dc_replace(
+        api_metadata,
+        title=api_metadata.title.replace("\\", "\\\\").replace('"', '\\"'),
+        description=api_metadata.description.replace("\\", "\\\\").replace('"""', '\\"\\"\\"'),
+    )
+
     # Build import statements using the actual generated filename from ModuleSpec
     imports = "\n".join(
         [
@@ -625,7 +634,7 @@ def main():
 
     if args.transport == "stdio":
         logger.info("🚀 Starting FastMCP 3.x server with STDIO transport")
-        logger.info("  🔐 Authentication: BACKEND_API_TOKEN environment variable")
+        logger.info("  🔐 Authentication: API_TOKEN environment variable")
         logger.info("  🔒 Token validation: N/A (STDIO mode - backend validates tokens)")
         logger.info(f"  📦 Modules: {len(module_names)} composed ({{TOTAL_TOOL_COUNT}} MCP tools)")
         logger.info("  🔧 Middleware: Error handling → Auth → Timing → Logging → ResponseLimiting → Ping")

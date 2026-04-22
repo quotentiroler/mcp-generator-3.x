@@ -27,6 +27,7 @@ from .test_generator import (
     generate_resource_tests,
     generate_server_integration_tests,
     generate_test_runner,
+    generate_tool_call_tests,
     generate_tool_schema_tests,
     generate_tool_tests,
     generate_transform_tests,
@@ -315,10 +316,12 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
             with open(openapi_spec, encoding="utf-8") as _f:
                 spec = _json.load(_f)
 
-            from .generate_client import generate_client_package
+            from openapi_py_fetch.generator import generate_client_package
+
+            from .introspection import enrich_spec_tags
 
             generated_dir.mkdir(parents=True, exist_ok=True)
-            ok = generate_client_package(spec, generated_dir)
+            ok = generate_client_package(spec, generated_dir, enrich_tags_fn=enrich_spec_tags)
             if not ok:
                 print("\n❌ API Client Generation Failed")
                 print("\n💡 Verify your openapi.json is valid:")
@@ -404,18 +407,42 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
             else:
                 print("\n🖼️  Generating API-specific display tools from response schemas...")
                 from .display_renderers import render_display_module
-                from .introspection import get_display_endpoints
+                from .introspection import get_display_endpoints, get_form_endpoints
                 from .writers import write_display_modules
 
                 display_endpoints = get_display_endpoints(src_dir)
+                form_endpoints = get_form_endpoints(src_dir)
                 display_modules = {}
                 for tag, endpoints in display_endpoints.items():
                     api_var = f"{tag}_api"
                     api_class_name = tag.title().replace("_", "") + "Api"
-                    code = render_display_module(tag, endpoints, api_var, api_class_name)
+                    tag_forms = form_endpoints.get(tag, [])
+                    code = render_display_module(
+                        tag,
+                        endpoints,
+                        api_var,
+                        api_class_name,
+                        form_endpoints=tag_forms,
+                    )
                     if code:
                         display_modules[tag] = code
                         display_module_count = len(display_modules)
+
+                # Also generate form-only modules for tags that have forms but no display endpoints
+                for tag, forms in form_endpoints.items():
+                    if tag not in display_modules and forms:
+                        api_var = f"{tag}_api"
+                        api_class_name = tag.title().replace("_", "") + "Api"
+                        code = render_display_module(
+                            tag,
+                            [],
+                            api_var,
+                            api_class_name,
+                            form_endpoints=forms,
+                        )
+                        if code:
+                            display_modules[tag] = code
+                            display_module_count = len(display_modules)
 
                 if display_modules:
                     write_display_modules(display_modules, output_dir / "apps")
@@ -537,6 +564,10 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         print("   • Behavioral edge-case tests (failure-driven)")
         behavioral_test_code = generate_behavioral_tests(modules, api_metadata, security_config)
 
+        # Generate real tools/call E2E tests (always)
+        print("   • Tool call E2E tests (tools/call)")
+        tool_call_test_code = generate_tool_call_tests(modules, api_metadata, security_config)
+
         if security_config.has_authentication():
             print("   • Authentication flow tests")
             auth_test_code = generate_auth_flow_tests(api_metadata, security_config, modules)
@@ -557,6 +588,7 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                 server_integration_test_code,
                 tool_schema_test_code,
                 behavioral_test_code,
+                tool_call_test_code,
             )
         else:
             print("   • Basic tool tests (no auth required)")
@@ -576,6 +608,7 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                 server_integration_test_code,
                 tool_schema_test_code,
                 behavioral_test_code,
+                tool_call_test_code,
             )
 
         # Generate test runner script
@@ -641,7 +674,7 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
 
         print("\n� Usage Modes:")
         print("   • STDIO: For Claude Desktop, Cline, etc.")
-        print("     export BACKEND_API_TOKEN=your_token")
+        print("     export API_TOKEN=your_token")
         print(f"     python {server_name}_mcp_generated.py")
         print("\n   • HTTP: For web-based MCP clients")
         print(f"     python {server_name}_mcp_generated.py --transport=http --port=8000")

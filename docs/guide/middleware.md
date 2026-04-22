@@ -35,7 +35,7 @@ Catches all exceptions during tool execution and returns structured error respon
 
 The `ApiClientContextMiddleware` handles:
 
-- **STDIO mode** — forwards `BACKEND_API_TOKEN` to the backend API
+- **STDIO mode** — forwards `API_TOKEN` to the backend API
 - **HTTP mode** — optionally validates JWT tokens via JWKS
 - **Identity injection** — makes authenticated user context available to tools
 - **Dynamic visibility** — per-session component toggling based on scopes (opt-in)
@@ -84,7 +84,7 @@ Configure in `fastmcp.json`:
 Enable with `--enable-storage --enable-caching`:
 
 ```bash
-uv run generate-mcp --enable-storage --enable-caching
+generate-mcp --enable-storage --enable-caching
 ```
 
 Caches API responses with configurable TTL. Reduces backend API calls for rate-limited or expensive endpoints.
@@ -94,7 +94,7 @@ Caches API responses with configurable TTL. Reduces backend API calls for rate-l
 Enable with `--enable-storage`:
 
 ```bash
-uv run generate-mcp --enable-storage
+generate-mcp --enable-storage
 ```
 
 A persistent storage backend for:

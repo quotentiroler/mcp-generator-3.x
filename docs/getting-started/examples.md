@@ -5,7 +5,7 @@
 The classic test API — 19 endpoints across 3 tags.
 
 ```bash
-uv run generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
+generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
 
 cd generated_mcp
 python swagger_petstore_openapi_mcp_generated.py --transport http --port 8000
@@ -33,7 +33,7 @@ generated_mcp/
 A large-scale spec — 300+ endpoints.
 
 ```bash
-uv run generate-mcp --url https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json
+generate-mcp --url https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json
 ```
 
 This generates 300+ tools organized into modular sub-servers by tag (repos, issues, pulls, actions, etc.).
@@ -44,7 +44,7 @@ A two-endpoint API to understand the basics.
 
 ```bash
 cd examples/minimal
-uv run generate-mcp --file openapi.json
+generate-mcp --file openapi.json
 ```
 
 See the [examples/](https://github.com/quotentiroler/mcp-generator-3.x/tree/main/examples) directory for pre-generated outputs you can inspect.

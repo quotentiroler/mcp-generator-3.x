@@ -2,22 +2,28 @@
 
 Generate a fully-functional MCP server from an OpenAPI spec in under a minute.
 
+## 0. Install
+
+```bash
+pip install mcp-generator
+```
+
 ## 1. Generate
 
 === "Local file"
 
     ```bash
     # Default: reads ./openapi.json
-    uv run generate-mcp
+    generate-mcp
 
     # Or specify a file
-    uv run generate-mcp --file ./my-api-spec.yaml
+    generate-mcp --file ./my-api-spec.yaml
     ```
 
 === "From URL"
 
     ```bash
-    uv run generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
+    generate-mcp --url https://petstore3.swagger.io/api/v3/openapi.json
     ```
 
 **What gets generated:**
@@ -35,16 +41,16 @@ By default, the generator creates a minimal, production-ready server. Enable add
 
 ```bash
 # Enable persistent storage (for OAuth tokens, session state)
-uv run generate-mcp --enable-storage
+generate-mcp --enable-storage
 
 # Enable response caching (reduces backend API calls)
-uv run generate-mcp --enable-storage --enable-caching
+generate-mcp --enable-storage --enable-caching
 
 # Enable MCP resources (expose GET endpoints as MCP resources)
-uv run generate-mcp --enable-resources
+generate-mcp --enable-resources
 
 # Enable all features
-uv run generate-mcp --enable-storage --enable-caching --enable-resources
+generate-mcp --enable-storage --enable-caching --enable-resources
 ```
 
 | Flag | Description | When to Use |
@@ -60,10 +66,10 @@ uv run generate-mcp --enable-storage --enable-caching --enable-resources
 
 ```bash
 # Register the generated server
-uv run register-mcp ./generated_mcp
+register-mcp ./generated_mcp
 
 # Verify registration
-uv run run-mcp --list
+run-mcp --list
 ```
 
 This adds your server to the local registry at `~/.mcp-generator/servers.json`.
@@ -73,14 +79,14 @@ This adds your server to the local registry at `~/.mcp-generator/servers.json`.
 === "STDIO (local AI clients)"
 
     ```bash
-    export BACKEND_API_TOKEN="your-api-token-here"
-    uv run run-mcp swagger_petstore_openapi
+    export API_TOKEN="your-api-token-here"
+    run-mcp swagger_petstore_openapi
     ```
 
 === "HTTP (network)"
 
     ```bash
-    uv run run-mcp swagger_petstore_openapi --mode http --port 8000
+    run-mcp swagger_petstore_openapi --mode http --port 8000
     ```
 
 === "Direct Python"
@@ -112,7 +118,7 @@ Add to `~/.claude/claude_desktop_config.json`:
       "command": "python",
       "args": ["/path/to/generated_mcp/swagger_petstore_openapi_mcp_generated.py"],
       "env": {
-        "BACKEND_API_TOKEN": "your-api-token-here"
+        "API_TOKEN": "your-api-token-here"
       }
     }
   }

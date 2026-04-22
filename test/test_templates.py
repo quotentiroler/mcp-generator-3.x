@@ -508,3 +508,141 @@ class TestBehavioralTemplate:
     def test_has_actionable_assertion_messages(self, behavioral_code: str) -> None:
         """Assertion messages should include 'Fix:' instructions."""
         assert "Fix:" in behavioral_code
+
+
+# ---------------------------------------------------------------------------
+# Tool Call E2E template
+# ---------------------------------------------------------------------------
+
+TOOL_CALL_OPENAPI_SPEC: dict = {
+    "openapi": "3.0.3",
+    "info": {"title": "Test API", "version": "1.0.0"},
+    "paths": {
+        "/pets": {
+            "get": {
+                "operationId": "listPets",
+                "tags": ["pet"],
+                "summary": "List all pets",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": True,
+                        "schema": {"type": "string", "enum": ["available", "sold"]},
+                    }
+                ],
+                "responses": {"200": {"description": "OK"}},
+            },
+            "post": {
+                "operationId": "createPet",
+                "tags": ["pet"],
+                "summary": "Create a pet",
+                "requestBody": {"content": {"application/json": {}}},
+                "responses": {"201": {"description": "Created"}},
+            },
+        },
+        "/pets/{petId}": {
+            "get": {
+                "operationId": "getPetById",
+                "tags": ["pet"],
+                "summary": "Get pet by ID",
+                "parameters": [
+                    {"name": "petId", "in": "path", "required": True, "schema": {"type": "integer"}}
+                ],
+                "responses": {"200": {"description": "OK"}},
+            },
+            "delete": {
+                "operationId": "deletePet",
+                "tags": ["pet"],
+                "summary": "Delete a pet",
+                "parameters": [
+                    {"name": "petId", "in": "path", "required": True, "schema": {"type": "integer"}}
+                ],
+                "responses": {"204": {"description": "Deleted"}},
+            },
+        },
+    },
+}
+
+
+class TestToolCallTemplate:
+    """Tests for the tools/call E2E test template."""
+
+    @pytest.fixture
+    def tool_call_code(self) -> str:
+        from mcp_generator.models import ApiMetadata, ModuleSpec
+        from mcp_generator.templates.test.test_tool_calls import generate_tool_call_tests
+
+        meta = ApiMetadata(
+            title="Test API",
+            version="1.0.0",
+            servers=[{"url": "http://localhost:3001"}],
+        )
+        sc = SecurityConfig()
+        modules = {
+            "pet": ModuleSpec(
+                filename="pet_server.py",
+                api_var_name="pet_api",
+                api_class_name="PetApi",
+                module_name="pet",
+                tool_count=4,
+                code="",
+            ),
+        }
+        return generate_tool_call_tests(modules, meta, sc, TOOL_CALL_OPENAPI_SPEC)
+
+    def test_generates_non_empty_output(self, tool_call_code: str) -> None:
+        assert len(tool_call_code) > 100
+
+    def test_has_read_and_write_test_classes(self, tool_call_code: str) -> None:
+        assert "class TestReadToolCalls" in tool_call_code
+        assert "class TestWriteToolCalls" in tool_call_code
+
+    def test_generates_read_tool_tests(self, tool_call_code: str) -> None:
+        assert "test_call_list_pets" in tool_call_code
+        assert "test_call_get_pet_by_id" in tool_call_code
+
+    def test_generates_write_tool_tests(self, tool_call_code: str) -> None:
+        assert "test_call_create_pet" in tool_call_code
+        assert "test_call_delete_pet" in tool_call_code
+
+    def test_uses_correct_tool_names(self, tool_call_code: str) -> None:
+        """Tool names should be Tag_sanitized_name format."""
+        assert '"Pet_list_pets"' in tool_call_code
+        assert '"Pet_get_pet_by_id"' in tool_call_code
+        assert '"Pet_create_pet"' in tool_call_code
+        assert '"Pet_delete_pet"' in tool_call_code
+
+    def test_includes_required_params(self, tool_call_code: str) -> None:
+        """Required parameters should be included in the call arguments."""
+        assert '"status"' in tool_call_code
+        assert '"pet_id"' in tool_call_code
+
+    def test_uses_enum_example(self, tool_call_code: str) -> None:
+        """Enum params should use first enum value as example."""
+        assert "'available'" in tool_call_code
+
+    def test_write_tools_include_body(self, tool_call_code: str) -> None:
+        """Write tools with requestBody should include body arg."""
+        # Find the create_pet test and verify it has body
+        assert '"body": "{}"' in tool_call_code
+
+    def test_has_mcp_call_helper(self, tool_call_code: str) -> None:
+        assert "async def _mcp_call" in tool_call_code
+        assert "tools/call" in tool_call_code
+
+    def test_has_session_init(self, tool_call_code: str) -> None:
+        assert "async def _init_session" in tool_call_code
+        assert "initialize" in tool_call_code
+
+    def test_has_mcp_session_fixture(self, tool_call_code: str) -> None:
+        assert "async def mcp_session" in tool_call_code
+
+    def test_coverage_comment_correct(self, tool_call_code: str) -> None:
+        assert "2 read-only tools (GET)" in tool_call_code
+        assert "2 write tools (POST/PUT/DELETE)" in tool_call_code
+
+    def test_sse_parser_skips_notifications(self, tool_call_code: str) -> None:
+        """SSE parser should skip server notifications and return the result."""
+        assert "Skip server notifications" in tool_call_code
+        assert '"method" in msg and "id" not in msg' in tool_call_code
