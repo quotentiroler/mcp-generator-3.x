@@ -119,7 +119,7 @@ jobs:
     - name: Generate MCP server from petstore spec
       run: |
         cd examples/petstore-openapi-3-0-4
-        uv run generate-mcp --enable-apps --generate-ui --enable-storage --enable-caching --enable-resources
+        uv run generate-mcp --enable-storage --enable-caching --enable-resources
         echo "✅ MCP server generated"
         ls -la generated_mcp/
         echo ""
