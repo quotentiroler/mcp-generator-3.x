@@ -32,6 +32,12 @@ class ApiMetadata:
             return self.servers[0].get("url", "http://localhost:3001")
         return "http://localhost:3001"
 
+    @property
+    def has_relative_server_url(self) -> bool:
+        """Check if the backend URL is relative (no scheme/host)."""
+        url = self.backend_url
+        return not url.startswith("http://") and not url.startswith("https://")
+
 
 @dataclass
 class OAuthFlowConfig:

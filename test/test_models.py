@@ -19,6 +19,18 @@ class TestApiMetadata:
         m = ApiMetadata(servers=[])
         assert m.backend_url == "http://localhost:3001"
 
+    def test_has_relative_server_url_false_for_absolute(self) -> None:
+        m = ApiMetadata(servers=[{"url": "https://api.example.com/v1"}])
+        assert m.has_relative_server_url is False
+
+    def test_has_relative_server_url_true_for_path_only(self) -> None:
+        m = ApiMetadata(servers=[{"url": "/api/v3"}])
+        assert m.has_relative_server_url is True
+
+    def test_has_relative_server_url_false_for_default(self) -> None:
+        m = ApiMetadata()
+        assert m.has_relative_server_url is False
+
 
 class TestSecurityConfig:
     def test_has_authentication_false_when_empty(self) -> None:

@@ -72,6 +72,11 @@ def print_metadata_summary(api_metadata: Any, security_config: Any) -> None:
 
     backend_url = api_metadata.backend_url
     print(f"   Backend URL: {backend_url}")
+    if api_metadata.has_relative_server_url:
+        print(f"\n   ⚠️  WARNING: Server URL '{backend_url}' is relative (no host).")
+        print("   The generated code will not work without setting API_BASE_URL at runtime.")
+        print("   Set it via environment variable or in your MCP client config, e.g.:")
+        print("   API_BASE_URL=https://your-api-host.com/api/v3")
 
     print("\n🔐 Security Configuration:")
     if security_config.schemes:
