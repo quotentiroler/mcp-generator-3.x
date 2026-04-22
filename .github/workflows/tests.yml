@@ -122,6 +122,9 @@ jobs:
         uv run generate-mcp --enable-apps --generate-ui --enable-storage --enable-caching --enable-resources
         echo "✅ MCP server generated"
         ls -la generated_mcp/
+        echo ""
+        echo "📝 Generated tests:"
+        ls -la test/generated/ || echo "⚠️ No generated tests found"
 
     - name: Install generated server dependencies
       run: |
@@ -164,7 +167,7 @@ jobs:
       env:
         MCP_SERVER_URL: http://localhost:8000/mcp
       run: |
-        # Run the generated HTTP tests against the live server
+        cd examples/petstore-openapi-3-0-4
         uv run pytest test/generated/ -v --tb=short -x \
           --ignore=test/generated/test_behavioral_generated.py \
           -rs
@@ -185,5 +188,5 @@ jobs:
         name: e2e-test-results
         path: |
           examples/petstore-openapi-3-0-4/generated_mcp/
-          test/generated/
+          examples/petstore-openapi-3-0-4/test/generated/
         retention-days: 7
