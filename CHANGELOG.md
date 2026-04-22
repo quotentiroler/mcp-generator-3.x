@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.2.3-alpha+7445647] - 2026-04-22
+
+### Changed
+
+- Dependencies updated
+
 ## [3.2.2] - 2026-04-22
 
 ### Changed
