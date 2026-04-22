@@ -18,6 +18,16 @@
 **Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/64
 
 
+
+- 🔧 Chores & Improvements: Internal staging merge and CI/CD housekeeping
+
+Notes:
+- Skipped metadata and merge commits per guidelines
+- No user-facing feature or bug fixes detected in meaningful commits since last release
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/67
+
+
 ## [3.2.1] - 2026-04-20
 
 - ✨ Features
