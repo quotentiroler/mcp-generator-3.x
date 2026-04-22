@@ -9,10 +9,11 @@ on:
 
 jobs:
   create-release:
-    # Only run if push to main (but skip if commit message has [skip ci]) OR manual trigger
-    if: |
-      (github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]')) ||
-      github.event_name == 'workflow_dispatch'
+    # Always run on push to main or manual trigger.
+    # GitHub natively skips workflows when the commit title itself contains [skip ci],
+    # so no need to check the message body (which caused false positives on squash merges
+    # where sub-commit messages from staging bots contained [skip ci]).
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     name: Create GitHub Release
     runs-on: ubuntu-latest
     permissions:
