@@ -198,7 +198,7 @@ async def _mcp_call(client: httpx.AsyncClient, tool_name: str, arguments: dict,
     if "text/event-stream" in content_type:
         data = _parse_sse(response.text)
         assert data is not None, (
-            f"No JSON-RPC result in SSE stream for {{tool_name}}.\n"
+            f"No JSON-RPC result in SSE stream for {{tool_name}}.\\n"
             f"SSE body (first 500 chars): {{response.text[:500]}}"
         )
         return data
