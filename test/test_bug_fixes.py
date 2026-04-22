@@ -547,3 +547,288 @@ class TestMetadataStringEscaping:
             compile(code, "<test>", "exec")
         except SyntaxError as e:
             pytest.fail(f"Generated server code has SyntaxError with backslash in title: {e}")
+
+
+# ===========================================================================
+# Round 2 — Additional TDD bug discoveries
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Bug #12: get_display_endpoints ignores path-level and $ref parameters
+#
+# Root cause: Same pattern as Bug #3/#4 — only reads get_op.get("parameters")
+# but not path_item.get("parameters"). Also doesn't resolve $ref params.
+# ---------------------------------------------------------------------------
+
+
+class TestDisplayEndpointPathParams:
+    """get_display_endpoints must merge path-level and $ref params."""
+
+    def test_path_level_params_included_in_display(self, tmp_path) -> None:
+        """Path-level parameters must appear in display endpoint params."""
+        import json
+
+        from mcp_generator.introspection import get_display_endpoints
+
+        spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "Test", "version": "1.0.0"},
+            "paths": {
+                "/items/{itemId}": {
+                    "parameters": [
+                        {
+                            "name": "itemId",
+                            "in": "path",
+                            "required": True,
+                            "schema": {"type": "string"},
+                        },
+                    ],
+                    "get": {
+                        "operationId": "getItem",
+                        "tags": ["items"],
+                        "responses": {
+                            "200": {
+                                "content": {
+                                    "application/json": {
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {"type": "string"},
+                                                "name": {"type": "string"},
+                                            },
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    },
+                }
+            },
+        }
+        spec_path = tmp_path / "openapi.json"
+        spec_path.write_text(json.dumps(spec))
+        result = get_display_endpoints(tmp_path)
+        endpoints = result.get("items", [])
+        assert len(endpoints) == 1, f"Expected 1 display endpoint, got {len(endpoints)}"
+        param_names = [p["name"] for p in endpoints[0].path_params]
+        assert "itemId" in param_names, (
+            f"Path-level param 'itemId' missing from display endpoint. Got: {param_names}"
+        )
+
+    def test_ref_params_resolved_in_display(self, tmp_path) -> None:
+        """$ref parameters must be resolved in display endpoint extraction."""
+        import json
+
+        from mcp_generator.introspection import get_display_endpoints
+
+        spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "Test", "version": "1.0.0"},
+            "components": {
+                "parameters": {
+                    "ItemId": {
+                        "name": "itemId",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string"},
+                    }
+                }
+            },
+            "paths": {
+                "/items/{itemId}": {
+                    "get": {
+                        "operationId": "getItem",
+                        "tags": ["items"],
+                        "parameters": [
+                            {"$ref": "#/components/parameters/ItemId"},
+                        ],
+                        "responses": {
+                            "200": {
+                                "content": {
+                                    "application/json": {
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {"type": "string"},
+                                            },
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    },
+                }
+            },
+        }
+        spec_path = tmp_path / "openapi.json"
+        spec_path.write_text(json.dumps(spec))
+        result = get_display_endpoints(tmp_path)
+        endpoints = result.get("items", [])
+        assert len(endpoints) == 1
+        param_names = [p["name"] for p in endpoints[0].path_params]
+        assert "itemId" in param_names, (
+            f"$ref param 'itemId' missing from display endpoint. Got: {param_names}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Bug #13: Stale set comprehension in get_resource_endpoints (dead code)
+#
+# Root cause: After Bug #3/#4 fix, line ~403 has an orphan set comprehension:
+#   {p.get("name") for p in get_op.get("parameters", []) if "name" in p}
+# It evaluates but the result is never assigned — pure dead code / linter warning.
+# ---------------------------------------------------------------------------
+
+
+class TestNoStaleSetComprehension:
+    """get_resource_endpoints should not have dead-code expressions."""
+
+    def test_no_orphan_set_comprehension(self) -> None:
+        """Source code must not contain orphan set comprehensions."""
+        import ast
+        import inspect
+
+        from mcp_generator.introspection import get_resource_endpoints
+
+        source = inspect.getsource(get_resource_endpoints)
+        tree = ast.parse(source)
+
+        orphan_sets = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Expr) and isinstance(node.value, ast.SetComp):
+                orphan_sets.append(ast.get_source_segment(source, node) or f"line {node.lineno}")
+
+        assert not orphan_sets, f"Found orphan set comprehension(s) — dead code: {orphan_sets}"
+
+
+# ---------------------------------------------------------------------------
+# Bug #14: camel_to_snake fails on consecutive uppercase letters
+#
+# Root cause: regex r"([a-z0-9])([A-Z])" only inserts _ between lower→upper
+# transitions. "HTMLParser" → "htmlparser" instead of "html_parser".
+# "APIClient" → "apiclient" instead of "api_client".
+# ---------------------------------------------------------------------------
+
+
+class TestCamelToSnakeConsecutiveUppercase:
+    """camel_to_snake must handle consecutive uppercase letters (acronyms)."""
+
+    def test_acronym_followed_by_word(self) -> None:
+        from mcp_generator.utils import camel_to_snake
+
+        assert camel_to_snake("HTMLParser") == "html_parser", (
+            f"Expected 'html_parser', got '{camel_to_snake('HTMLParser')}'"
+        )
+
+    def test_acronym_api(self) -> None:
+        from mcp_generator.utils import camel_to_snake
+
+        assert camel_to_snake("APIClient") == "api_client", (
+            f"Expected 'api_client', got '{camel_to_snake('APIClient')}'"
+        )
+
+    def test_mid_string_acronym(self) -> None:
+        from mcp_generator.utils import camel_to_snake
+
+        assert camel_to_snake("getHTTPResponse") == "get_http_response", (
+            f"Expected 'get_http_response', got '{camel_to_snake('getHTTPResponse')}'"
+        )
+
+    def test_simple_camel_still_works(self) -> None:
+        """Ensure normal CamelCase still converts correctly."""
+        from mcp_generator.utils import camel_to_snake
+
+        assert camel_to_snake("PetApi") == "pet_api"
+        assert camel_to_snake("StoreApi") == "store_api"
+
+
+# ---------------------------------------------------------------------------
+# Bug #16: Response-level $ref not resolved in _extract_response_schema
+#
+# Root cause: _extract_response_schema receives raw response objects. If a
+# response uses $ref (e.g. {"$ref": "#/components/responses/Success"}), the
+# function tries .get("content") on the ref object which returns None.
+# The $ref must be resolved first.
+# ---------------------------------------------------------------------------
+
+
+class TestResponseRefResolution:
+    """_extract_response_schema must resolve $ref in response objects."""
+
+    def test_ref_response_schema_extracted(self) -> None:
+        from mcp_generator.introspection import _extract_response_schema
+
+        spec = {
+            "components": {
+                "responses": {
+                    "PetResponse": {
+                        "description": "A pet",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {"type": "integer"},
+                                        "name": {"type": "string"},
+                                    },
+                                }
+                            }
+                        },
+                    }
+                }
+            }
+        }
+        responses = {"200": {"$ref": "#/components/responses/PetResponse"}}
+        result = _extract_response_schema(responses, spec)
+        assert result is not None, (
+            "_extract_response_schema returned None for $ref response — ref not resolved"
+        )
+        assert len(result.fields) >= 2, f"Expected at least 2 fields, got {len(result.fields)}"
+
+
+# ---------------------------------------------------------------------------
+# Bug #17: normalize_version misses simple pre-release tags
+#
+# Root cause: regex r"^(\d+\.\d+\.\d+)-([a-z]+)\.(.+)$" requires a dot
+# after the prerelease name (e.g. "alpha.123"). But simple prerelease
+# tags like "1.0.0-alpha" or "2.0.0-beta" have no dot — they don't match
+# and are returned as-is, which is not PEP 440 compliant.
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeVersionSimplePrerelease:
+    """normalize_version must handle pre-release tags without local parts."""
+
+    def test_simple_alpha(self) -> None:
+        from mcp_generator.utils import normalize_version
+
+        result = normalize_version("1.0.0-alpha")
+        assert result != "1.0.0-alpha", (
+            f"'1.0.0-alpha' is not PEP 440 — should be normalized. Got: {result}"
+        )
+        # PEP 440 alpha: 1.0.0a0
+        assert "a" in result.lower(), f"Expected PEP 440 alpha marker in '{result}'"
+
+    def test_simple_beta(self) -> None:
+        from mcp_generator.utils import normalize_version
+
+        result = normalize_version("2.0.0-beta")
+        assert result != "2.0.0-beta", (
+            f"'2.0.0-beta' is not PEP 440 — should be normalized. Got: {result}"
+        )
+
+    def test_simple_rc(self) -> None:
+        from mcp_generator.utils import normalize_version
+
+        result = normalize_version("3.0.0-rc")
+        assert result != "3.0.0-rc", (
+            f"'3.0.0-rc' is not PEP 440 — should be normalized. Got: {result}"
+        )
+
+    def test_existing_format_still_works(self) -> None:
+        """Ensure the existing format with local part still converts."""
+        from mcp_generator.utils import normalize_version
+
+        result = normalize_version("0.0.1-alpha.202510200205.3df5db6a")
+        assert "a0+" in result, f"Existing format broke. Got: {result}"

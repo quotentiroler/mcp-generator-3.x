@@ -21,10 +21,10 @@ class TestCamelToSnake:
             ("PetApi", "pet_api"),
             ("UserApi", "user_api"),
             ("AccessControlApi", "access_control_api"),
-            ("HTMLParser", "htmlparser"),  # consecutive caps stay grouped
+            ("HTMLParser", "html_parser"),  # consecutive caps split at acronym boundary
             ("already_snake", "already_snake"),
             ("lowercase", "lowercase"),
-            ("getHTTPResponse", "get_httpresponse"),
+            ("getHTTPResponse", "get_http_response"),
             ("SimpleXML", "simple_xml"),
         ],
     )

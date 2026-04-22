@@ -400,7 +400,6 @@ def get_resource_endpoints(base_dir: Path | None = None) -> dict[str, list[dict[
 
         # Merge path-level + operation-level parameters (operation takes precedence)
         all_params = list(path_item.get("parameters", []))
-        {p.get("name") for p in get_op.get("parameters", []) if "name" in p}
         for op_param in get_op.get("parameters", []):
             all_params.append(op_param)
         # Deduplicate: keep operation-level params, skip path-level if same name
@@ -591,6 +590,10 @@ def _extract_response_schema(
     if not success_resp:
         return None
 
+    # Resolve response-level $ref (e.g. {"$ref": "#/components/responses/PetResponse"})
+    if "$ref" in success_resp:
+        success_resp = _resolve_ref(spec, success_resp["$ref"])
+
     content = success_resp.get("content", {})
     json_content = content.get("application/json", content.get("*/*", {}))
     schema = json_content.get("schema", {})
@@ -670,7 +673,23 @@ def get_display_endpoints(base_dir: Path | None = None) -> dict[str, list[Displa
 
         path_params = []
         query_params = []
-        for param in get_op.get("parameters", []):
+
+        # Merge path-level + operation-level params; resolve $ref; deduplicate
+        all_display_params = list(path_item.get("parameters", []))
+        for op_param in get_op.get("parameters", []):
+            all_display_params.append(op_param)
+        seen_display: set[str] = set()
+        deduped_display: list[dict[str, Any]] = []
+        for param in reversed(all_display_params):
+            if "$ref" in param:
+                param = _resolve_ref(spec, param["$ref"])
+            name = param.get("name")
+            if name and name not in seen_display:
+                seen_display.add(name)
+                deduped_display.append(param)
+        deduped_display.reverse()
+
+        for param in deduped_display:
             p_in = param.get("in")
             if p_in == "path":
                 path_params.append(
