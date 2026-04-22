@@ -1,5 +1,5 @@
-# Unit tests, linting, and type checking for the MCP generator itself
-# For integration tests of generated examples, see test-examples.yml
+# Unit tests, linting, type checking, and end-to-end tests for the MCP generator
+# For integration tests of individual examples, see test-examples.yml
 name: Tests
 
 on:
@@ -69,11 +69,11 @@ jobs:
       continue-on-error: true  # Don't fail on type errors initially
 
     - name: Run unit tests
-      run: uv run pytest test/ -v --tb=short
+      run: uv run pytest test/ -v --tb=short --ignore=test/generated
 
     - name: Run unit tests with coverage
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
-      run: uv run pytest test/ --cov=mcp_generator --cov-report=xml --cov-report=term-missing
+      run: uv run pytest test/ --cov=mcp_generator --cov-report=xml --cov-report=term-missing --ignore=test/generated
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
@@ -84,3 +84,106 @@ jobs:
         name: mcp-generator-coverage
         fail_ci_if_error: false
         token: ${{ secrets.CODECOV_TOKEN }}
+
+  e2e:
+    name: E2E - Generate, Start & Test Server
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        enable-cache: true
+        cache-dependency-glob: "**/pyproject.toml"
+
+    - name: Install Node.js (for OpenAPI Generator)
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install OpenAPI Generator CLI
+      run: npm install -g @openapitools/openapi-generator-cli
+
+    - name: Install dependencies
+      run: uv sync --group dev
+
+    - name: Generate MCP server from petstore spec
+      run: |
+        cd examples/petstore-openapi-3-0-4
+        uv run generate-mcp --enable-apps --generate-ui --enable-storage --enable-caching --enable-resources
+        echo "✅ MCP server generated"
+        ls -la generated_mcp/
+
+    - name: Install generated server dependencies
+      run: |
+        cd examples/petstore-openapi-3-0-4/generated_mcp
+        uv sync
+        echo "✅ Server dependencies installed"
+
+    - name: Start MCP server
+      run: |
+        cd examples/petstore-openapi-3-0-4/generated_mcp
+        uv run python swagger_petstore_openapi_mcp_generated.py --transport http --port 8000 &
+        SERVER_PID=$!
+        echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
+        echo "⏳ Waiting for server to start (PID: $SERVER_PID)..."
+
+        # Wait up to 30 seconds for server to be ready
+        for i in $(seq 1 30); do
+          if curl -sf http://localhost:8000/mcp > /dev/null 2>&1 || \
+             curl -sf -X POST http://localhost:8000/mcp \
+               -H "Content-Type: application/json" \
+               -d '{"jsonrpc":"2.0","id":"ping","method":"ping"}' > /dev/null 2>&1; then
+            echo "✅ Server ready after ${i}s"
+            break
+          fi
+          if ! kill -0 $SERVER_PID 2>/dev/null; then
+            echo "❌ Server process died"
+            exit 1
+          fi
+          sleep 1
+        done
+
+        # Final check
+        if ! kill -0 $SERVER_PID 2>/dev/null; then
+          echo "❌ Server is not running"
+          exit 1
+        fi
+        echo "✅ Server is running on http://localhost:8000/mcp"
+
+    - name: Run e2e tests against live server
+      env:
+        MCP_SERVER_URL: http://localhost:8000/mcp
+      run: |
+        # Run the generated HTTP tests against the live server
+        uv run pytest test/generated/ -v --tb=short -x \
+          --ignore=test/generated/test_behavioral_generated.py \
+          -rs
+
+    - name: Stop MCP server
+      if: always()
+      run: |
+        if [ -n "$SERVER_PID" ]; then
+          kill $SERVER_PID 2>/dev/null || true
+          wait $SERVER_PID 2>/dev/null || true
+          echo "✅ Server stopped"
+        fi
+
+    - name: Upload test artifacts on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-test-results
+        path: |
+          examples/petstore-openapi-3-0-4/generated_mcp/
+          test/generated/
+        retention-days: 7
