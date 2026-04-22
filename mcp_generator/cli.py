@@ -27,6 +27,7 @@ from .test_generator import (
     generate_resource_tests,
     generate_server_integration_tests,
     generate_test_runner,
+    generate_tool_call_tests,
     generate_tool_schema_tests,
     generate_tool_tests,
     generate_transform_tests,
@@ -563,6 +564,10 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         print("   • Behavioral edge-case tests (failure-driven)")
         behavioral_test_code = generate_behavioral_tests(modules, api_metadata, security_config)
 
+        # Generate real tools/call E2E tests (always)
+        print("   • Tool call E2E tests (tools/call)")
+        tool_call_test_code = generate_tool_call_tests(modules, api_metadata, security_config)
+
         if security_config.has_authentication():
             print("   • Authentication flow tests")
             auth_test_code = generate_auth_flow_tests(api_metadata, security_config, modules)
@@ -583,6 +588,7 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                 server_integration_test_code,
                 tool_schema_test_code,
                 behavioral_test_code,
+                tool_call_test_code,
             )
         else:
             print("   • Basic tool tests (no auth required)")
@@ -602,6 +608,7 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                 server_integration_test_code,
                 tool_schema_test_code,
                 behavioral_test_code,
+                tool_call_test_code,
             )
 
         # Generate test runner script

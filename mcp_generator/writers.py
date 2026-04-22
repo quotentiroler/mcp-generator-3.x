@@ -578,6 +578,7 @@ def write_test_files(
     server_integration_test_code: str | None = None,
     tool_schema_test_code: str | None = None,
     behavioral_test_code: str | None = None,
+    tool_call_test_code: str | None = None,
 ) -> None:
     """
     Write generated test files to the filesystem.
@@ -597,6 +598,7 @@ def write_test_files(
         server_integration_test_code: Generated in-process integration tests
         tool_schema_test_code: Generated tool schema validation tests
         behavioral_test_code: Generated behavioural edge-case tests (expected to fail initially)
+        tool_call_test_code: Generated tools/call E2E tests (requires running server)
     """
     test_dir.mkdir(parents=True, exist_ok=True)
 
@@ -689,6 +691,13 @@ def write_test_files(
         with open(behavioral_file, "w", encoding="utf-8") as f:
             f.write(behavioral_test_code)
         print("   ✅ test_behavioral_generated.py")
+
+    # Write tool call E2E tests (requires running server)
+    if tool_call_test_code:
+        tool_call_file = test_dir / "test_tool_calls_generated.py"
+        with open(tool_call_file, "w", encoding="utf-8") as f:
+            f.write(tool_call_test_code)
+        print("   ✅ test_tool_calls_generated.py")
 
 
 def write_test_runner(test_runner_code: str, output_file: Path) -> None:

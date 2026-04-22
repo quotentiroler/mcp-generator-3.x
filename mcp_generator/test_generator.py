@@ -25,6 +25,7 @@ from .templates.test.test_resources import generate_resource_tests as _generate_
 from .templates.test.test_server_integration import (
     generate_server_integration_tests as _generate_server_integration,
 )
+from .templates.test.test_tool_calls import generate_tool_call_tests as _generate_tool_calls
 from .templates.test.test_tool_schemas import generate_tool_schema_tests as _generate_tool_schemas
 from .templates.test.test_tools import generate_tool_tests as _generate_tools
 from .templates.test.test_transforms import generate_transform_tests as _generate_transforms
@@ -370,3 +371,31 @@ def generate_behavioral_tests(
         str: Test file content for behavioural edge-case tests
     """
     return _generate_behavioral(modules, api_metadata, security_config)
+
+
+def generate_tool_call_tests(
+    modules: dict[str, ModuleSpec],
+    api_metadata: ApiMetadata,
+    security_config: SecurityConfig,
+) -> str:
+    """Generate real tools/call E2E tests.
+
+    These tests actually invoke each MCP tool via tools/call over HTTP and
+    verify the response structure. Requires a running MCP server and
+    the OpenAPI spec to extract operations.
+
+    Args:
+        modules: Generated server modules
+        api_metadata: API metadata
+        security_config: Security configuration
+
+    Returns:
+        str: Test file content for tool call validation
+    """
+    try:
+        openapi_spec = _load_openapi_spec()
+    except Exception as e:
+        print(f"   ⚠️  Could not load OpenAPI spec for tool call tests: {e}")
+        return ""
+
+    return _generate_tool_calls(modules, api_metadata, security_config, openapi_spec)
