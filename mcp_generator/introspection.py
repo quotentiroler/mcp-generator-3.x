@@ -13,6 +13,7 @@ from typing import Any
 from .models import (
     ApiMetadata,
     DisplayEndpoint,
+    FormEndpoint,
     OAuthConfig,
     OAuthFlowConfig,
     ResponseField,
@@ -675,3 +676,103 @@ def get_display_endpoints(base_dir: Path | None = None) -> dict[str, list[Displa
         endpoints_by_tag[primary_tag].append(endpoint)
 
     return endpoints_by_tag
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: Request body schema extraction for form generation
+# ---------------------------------------------------------------------------
+
+
+def _extract_request_body_schema(
+    operation: dict[str, Any], spec: dict[str, Any]
+) -> tuple[str, list[ResponseField], list[str]] | None:
+    """Extract the request body schema from a POST/PUT operation.
+
+    Returns:
+        (schema_name, fields, required_field_names) or None if no parseable body.
+    """
+    request_body = operation.get("requestBody", {})
+    content = request_body.get("content", {})
+
+    # Prefer JSON content type
+    json_content = content.get("application/json", content.get("*/*", {}))
+    schema = json_content.get("schema", {})
+    if not schema:
+        return None
+
+    schema_name = ""
+    if "$ref" in schema:
+        schema_name = _ref_name(schema["$ref"])
+        schema = _resolve_ref(spec, schema["$ref"])
+
+    if schema.get("type") != "object" and "properties" not in schema:
+        return None
+
+    fields = _parse_schema_fields(schema, spec)
+    if not fields:
+        return None
+
+    required_names = schema.get("required", [])
+    return schema_name, fields, required_names
+
+
+def get_form_endpoints(base_dir: Path | None = None) -> dict[str, list[FormEndpoint]]:
+    """Extract POST/PUT endpoints with request body schemas for form generation.
+
+    Returns:
+        Dictionary mapping tag names to lists of FormEndpoint.
+    """
+    if base_dir is None:
+        base_dir = Path.cwd()
+
+    openapi_path = _find_openapi_spec(base_dir)
+    if not openapi_path or not openapi_path.exists():
+        return {}
+
+    spec = _load_openapi_spec(openapi_path)
+    if not spec or "paths" not in spec:
+        return {}
+
+    enrich_spec_tags(spec)
+    forms_by_tag: dict[str, list[FormEndpoint]] = {}
+
+    for path, path_item in spec.get("paths", {}).items():
+        for method in ("post", "put"):
+            if method not in path_item:
+                continue
+
+            op = path_item[method]
+            operation_id = op.get("operationId")
+            if not operation_id:
+                continue
+
+            result = _extract_request_body_schema(op, spec)
+            if result is None:
+                continue
+
+            schema_name, fields, required_names = result
+
+            tags = op.get("tags", ["default"])
+            primary_tag = tags[0] if tags else "default"
+
+            # Build MCP tool name: {Tag}_{snake_case_op} matching namespace mount
+            snake_op = camel_to_snake(operation_id)
+            tool_name = f"{primary_tag.title()}_{snake_op}"
+
+            endpoint = FormEndpoint(
+                operation_id=operation_id,
+                path=path,
+                http_method=method,
+                summary=op.get("summary", ""),
+                tag=primary_tag,
+                schema_name=schema_name,
+                fields=fields,
+                required_fields=required_names,
+                tool_name=tool_name,
+            )
+
+            if primary_tag not in forms_by_tag:
+                forms_by_tag[primary_tag] = []
+            forms_by_tag[primary_tag].append(endpoint)
+
+    return forms_by_tag

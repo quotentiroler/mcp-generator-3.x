@@ -181,3 +181,18 @@ class DisplayEndpoint:
     path_params: list[dict[str, Any]]
     query_params: list[dict[str, Any]]
     response_schema: ResponseSchema | None = None
+
+
+@dataclass
+class FormEndpoint:
+    """A POST/PUT endpoint with a request body schema for form generation."""
+
+    operation_id: str
+    path: str
+    http_method: str  # "post" or "put"
+    summary: str
+    tag: str
+    schema_name: str  # e.g. "Pet", "Order"
+    fields: list[ResponseField] = field(default_factory=list)
+    required_fields: list[str] = field(default_factory=list)
+    tool_name: str = ""  # Corresponding MCP tool name e.g. "Pet_add_pet"

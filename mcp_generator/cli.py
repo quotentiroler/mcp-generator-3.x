@@ -405,18 +405,36 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
             else:
                 print("\n🖼️  Generating API-specific display tools from response schemas...")
                 from .display_renderers import render_display_module
-                from .introspection import get_display_endpoints
+                from .introspection import get_display_endpoints, get_form_endpoints
                 from .writers import write_display_modules
 
                 display_endpoints = get_display_endpoints(src_dir)
+                form_endpoints = get_form_endpoints(src_dir)
                 display_modules = {}
                 for tag, endpoints in display_endpoints.items():
                     api_var = f"{tag}_api"
                     api_class_name = tag.title().replace("_", "") + "Api"
-                    code = render_display_module(tag, endpoints, api_var, api_class_name)
+                    tag_forms = form_endpoints.get(tag, [])
+                    code = render_display_module(
+                        tag, endpoints, api_var, api_class_name,
+                        form_endpoints=tag_forms,
+                    )
                     if code:
                         display_modules[tag] = code
                         display_module_count = len(display_modules)
+
+                # Also generate form-only modules for tags that have forms but no display endpoints
+                for tag, forms in form_endpoints.items():
+                    if tag not in display_modules and forms:
+                        api_var = f"{tag}_api"
+                        api_class_name = tag.title().replace("_", "") + "Api"
+                        code = render_display_module(
+                            tag, [], api_var, api_class_name,
+                            form_endpoints=forms,
+                        )
+                        if code:
+                            display_modules[tag] = code
+                            display_module_count = len(display_modules)
 
                 if display_modules:
                     write_display_modules(display_modules, output_dir / "apps")

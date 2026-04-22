@@ -10,7 +10,7 @@ from mcp_generator.introspection import (
     _parse_schema_fields,
     _resolve_ref,
 )
-from mcp_generator.models import DisplayEndpoint, ResponseField, ResponseSchema
+from mcp_generator.models import DisplayEndpoint, FormEndpoint, ResponseField, ResponseSchema
 
 # ---------------------------------------------------------------------------
 # Test OpenAPI spec with various response shapes
@@ -490,3 +490,159 @@ class TestRenderDisplayModule:
         code = render_display_module("pet", self._make_endpoints(), "pet_api", "PetApi")
         assert "except Exception" in code
         assert '"error"' in code or '"Error"' in code
+
+
+# ---------------------------------------------------------------------------
+# Form generation tests
+# ---------------------------------------------------------------------------
+
+
+class TestFormGeneration:
+    """Test Form.from_model() code generation from FormEndpoint data."""
+
+    def _make_form_endpoints(self) -> list[FormEndpoint]:
+        return [
+            FormEndpoint(
+                operation_id="addPet",
+                path="/pets",
+                http_method="post",
+                summary="Add a new pet",
+                tag="pet",
+                schema_name="Pet",
+                fields=[
+                    ResponseField(name="id", python_type="int"),
+                    ResponseField(name="name", python_type="str"),
+                    ResponseField(
+                        name="status",
+                        python_type="str",
+                        is_enum=True,
+                        enum_values=["available", "pending", "sold"],
+                        description="pet status",
+                    ),
+                ],
+                required_fields=["name"],
+                tool_name="Pet_add_pet",
+            ),
+            FormEndpoint(
+                operation_id="updatePet",
+                path="/pets",
+                http_method="put",
+                summary="Update pet",
+                tag="pet",
+                schema_name="Pet",
+                fields=[
+                    ResponseField(name="id", python_type="int"),
+                    ResponseField(name="name", python_type="str"),
+                ],
+                required_fields=["name"],
+                tool_name="Pet_update_pet",
+            ),
+        ]
+
+    def test_form_models_have_unique_class_names(self) -> None:
+        """Same schema used by different operations must produce unique class names."""
+        code = render_display_module(
+            "pet", [], "pet_api", "PetApi",
+            form_endpoints=self._make_form_endpoints(),
+        )
+        assert "class AddPetForm(BaseModel):" in code
+        assert "class UpdatePetForm(BaseModel):" in code
+
+    def test_form_tool_references_correct_tool_name(self) -> None:
+        code = render_display_module(
+            "pet", [], "pet_api", "PetApi",
+            form_endpoints=self._make_form_endpoints(),
+        )
+        assert 'CallTool("Pet_add_pet")' in code
+        assert 'CallTool("Pet_update_pet")' in code
+
+    def test_form_tool_submit_label(self) -> None:
+        code = render_display_module(
+            "pet", [], "pet_api", "PetApi",
+            form_endpoints=self._make_form_endpoints(),
+        )
+        assert 'submit_label="Create Pet"' in code
+        assert 'submit_label="Update Pet"' in code
+
+    def test_form_model_uses_literal_for_enum(self) -> None:
+        code = render_display_module(
+            "pet", [], "pet_api", "PetApi",
+            form_endpoints=self._make_form_endpoints(),
+        )
+        assert 'Literal["available", "pending", "sold"]' in code
+
+    def test_form_model_required_field_has_no_default(self) -> None:
+        code = render_display_module(
+            "pet", [], "pet_api", "PetApi",
+            form_endpoints=self._make_form_endpoints(),
+        )
+        # "name" is required → no default=None
+        assert 'name: str = Field(title="Name")' in code
+
+    def test_form_model_optional_field_has_default_none(self) -> None:
+        code = render_display_module(
+            "pet", [], "pet_api", "PetApi",
+            form_endpoints=self._make_form_endpoints(),
+        )
+        # "id" is not required → has default=None
+        assert "default=None" in code
+
+    def test_form_imports_included(self) -> None:
+        code = render_display_module(
+            "pet", [], "pet_api", "PetApi",
+            form_endpoints=self._make_form_endpoints(),
+        )
+        assert "from pydantic import BaseModel, Field" in code
+        assert "from prefab_ui.components import Form" in code
+        assert "from prefab_ui.actions.mcp import CallTool" in code
+
+    def test_no_forms_no_form_imports(self) -> None:
+        """When no form endpoints are provided, no form imports should be present."""
+        pet_fields = _parse_schema_fields(
+            SCHEMA_TEST_SPEC["components"]["schemas"]["Pet"], SCHEMA_TEST_SPEC
+        )
+        endpoints = [
+            DisplayEndpoint(
+                operation_id="getPetById",
+                path="/pets/{petId}",
+                http_method="get",
+                summary="Get pet by ID",
+                tag="pet",
+                path_params=[{"name": "petId", "required": True, "schema": {"type": "integer"}}],
+                query_params=[],
+                response_schema=ResponseSchema(
+                    fields=pet_fields, is_object=True, schema_name="Pet"
+                ),
+            ),
+        ]
+        code = render_display_module("pet", endpoints, "pet_api", "PetApi")
+        assert "from pydantic import BaseModel, Field" not in code
+        assert "CallTool" not in code
+
+    def test_form_and_display_tools_coexist(self) -> None:
+        """Forms and display tools can be generated in the same module."""
+        pet_fields = _parse_schema_fields(
+            SCHEMA_TEST_SPEC["components"]["schemas"]["Pet"], SCHEMA_TEST_SPEC
+        )
+        display_endpoints = [
+            DisplayEndpoint(
+                operation_id="getPetById",
+                path="/pets/{petId}",
+                http_method="get",
+                summary="Get pet by ID",
+                tag="pet",
+                path_params=[{"name": "petId", "required": True, "schema": {"type": "integer"}}],
+                query_params=[],
+                response_schema=ResponseSchema(
+                    fields=pet_fields, is_object=True, schema_name="Pet"
+                ),
+            ),
+        ]
+        code = render_display_module(
+            "pet", display_endpoints, "pet_api", "PetApi",
+            form_endpoints=self._make_form_endpoints(),
+        )
+        # Has both display and form tools
+        assert "def view_get_pet_by_id_detail" in code
+        assert "def form_add_pet" in code
+        assert "Form.from_model(" in code

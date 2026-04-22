@@ -308,15 +308,36 @@ def _render_tool(spec: ToolSpec) -> str:
     """Render tool function code from specification."""
     # Build function signature
     func_params = ["ctx: Context"]
+    # Detect body parameters (request body for POST/PUT) to support Form.from_model()
+    body_param = next((p for p in spec.parameters if p.name == "body"), None)
+    has_body = body_param is not None
+
     for param in spec.parameters:
-        if param.required:
+        if param.name == "body" and has_body:
+            # Make body optional so Form.from_model() can submit via data instead
+            func_params.append(f"{param.name}: str | None = None")
+        elif param.required:
             func_params.append(f"{param.name}: str")
         else:
             func_params.append(f"{param.name}: str | None = None")
 
+    # Add 'data' parameter for Form.from_model() integration
+    # When a prefab Form submits via CallTool, it sends {"data": {field: value, ...}}
+    if has_body:
+        func_params.append("data: str | dict | None = None")
+
     # Build parameter conversion code for Pydantic models
     param_conversion_code = ""
     pydantic_params = [p for p in spec.parameters if p.is_pydantic]
+
+    # Add data → body conversion for Form.from_model() support
+    if has_body:
+        param_conversion_code += """
+        # Form.from_model() sends field values under 'data' key via CallTool
+        if data and not body:
+            import json as _json
+            body = _json.dumps(data) if isinstance(data, dict) else data
+"""
 
     if pydantic_params:
         for param in pydantic_params:
@@ -364,7 +385,11 @@ def _render_tool(spec: ToolSpec) -> str:
         decorator = "@mcp.tool"
 
     # Build list of required parameter names for elicitation
-    required_param_names = [p.name for p in spec.parameters if p.required]
+    # When body has a data alternative (Form.from_model), body is not strictly required
+    required_param_names = [
+        p.name for p in spec.parameters
+        if p.required and not (p.name == "body" and has_body)
+    ]
     required_params_literal = ", ".join([f'"{n}"' for n in required_param_names])
 
     code = f'''
