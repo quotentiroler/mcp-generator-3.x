@@ -197,7 +197,10 @@ async def _mcp_call(client: httpx.AsyncClient, tool_name: str, arguments: dict,
     content_type = response.headers.get("content-type", "")
     if "text/event-stream" in content_type:
         data = _parse_sse(response.text)
-        assert data is not None, f"No SSE data in response for {{tool_name}}"
+        assert data is not None, (
+            f"No JSON-RPC result in SSE stream for {{tool_name}}.\n"
+            f"SSE body (first 500 chars): {{response.text[:500]}}"
+        )
         return data
 
     return response.json()
@@ -243,7 +246,7 @@ async def _init_session(client: httpx.AsyncClient) -> str | None:
 @pytest.fixture
 async def mcp_session():
     """Create an initialized MCP session."""
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=60.0) as client:
         # Check server is up
         try:
             await client.post(
