@@ -134,6 +134,38 @@ jobs:
             }
           }
 
+    - name: Sync main back to staging
+      if: always()
+      run: |
+        echo "🔄 Syncing main into staging to prevent branch divergence..."
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git fetch origin staging:staging
+        git checkout staging
+        # Merge main with automatic resolution — prefer main's content on conflict
+        if git merge main --no-edit -m "chore: sync main into staging after release [automated]"; then
+          echo "✅ Merge succeeded (no conflicts)"
+        else
+          echo "⚠️  Merge had conflicts — resolving with main's version for metadata files"
+          # Auto-resolve known conflict files by taking main's version
+          for f in CHANGELOG.md pyproject.toml uv.lock SECURITY.md; do
+            if git diff --name-only --diff-filter=U | grep -q "^${f}$"; then
+              echo "   Resolving $f with main's version"
+              git checkout --theirs "$f"
+              git add "$f"
+            fi
+          done
+          # If there are still unresolved conflicts, abort
+          if git diff --name-only --diff-filter=U | grep -q .; then
+            echo "❌ Unresolved conflicts remain — aborting sync"
+            git merge --abort
+            exit 0  # Don't fail the workflow
+          fi
+          git commit --no-edit
+        fi
+        git push origin staging
+        echo "✅ Staging synced with main"
+
     - name: Summary
       if: always()
       run: |
