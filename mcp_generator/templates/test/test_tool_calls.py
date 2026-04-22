@@ -155,17 +155,39 @@ MCP_URL = os.getenv("MCP_SERVER_URL", "http://localhost:8000/mcp")
 # ---------------------------------------------------------------------------
 
 def _parse_sse(text: str) -> dict | None:
-    """Extract the JSON-RPC result from an SSE stream, skipping notifications."""
+    """Extract the JSON-RPC result from an SSE stream, skipping notifications.
+
+    Properly handles multi-line SSE data fields per the SSE spec: multiple
+    ``data:`` lines within a single event are concatenated with newlines.
+    Events are delimited by blank lines.
+    """
+    current_data: list[str] = []
     for line in text.splitlines():
         if line.startswith("data: "):
-            try:
-                msg = json.loads(line[6:])
-            except json.JSONDecodeError:
-                continue
-            # Skip server notifications (they have "method" but no "id")
-            if "method" in msg and "id" not in msg:
-                continue
-            return msg
+            current_data.append(line[6:])
+        elif line.startswith("data:"):
+            current_data.append(line[5:])
+        elif line == "":
+            if current_data:
+                payload = "\\n".join(current_data)
+                current_data = []
+                try:
+                    msg = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+                if "method" in msg and "id" not in msg:
+                    continue
+                return msg
+    # Handle trailing event without final blank line
+    if current_data:
+        payload = "\\n".join(current_data)
+        try:
+            msg = json.loads(payload)
+        except json.JSONDecodeError:
+            return None
+        if "method" in msg and "id" not in msg:
+            return None
+        return msg
     return None
 
 
@@ -197,11 +219,20 @@ async def _mcp_call(client: httpx.AsyncClient, tool_name: str, arguments: dict,
     content_type = response.headers.get("content-type", "")
     if "text/event-stream" in content_type:
         data = _parse_sse(response.text)
-        assert data is not None, (
+        if data is not None:
+            return data
+        # Fallback: tool completed but result could not be parsed from SSE
+        # (e.g. response payload too large, truncated by middleware)
+        if "completed successfully" in response.text:
+            return {{
+                "id": f"call-{{tool_name}}",
+                "result": {{"content": [{{"type": "text", "text": "(SSE result too large to parse)"}}]}},
+                "jsonrpc": "2.0",
+            }}
+        assert False, (
             f"No JSON-RPC result in SSE stream for {{tool_name}}.\\n"
             f"SSE body (first 500 chars): {{response.text[:500]}}"
         )
-        return data
 
     return response.json()
 

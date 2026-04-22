@@ -644,5 +644,5 @@ class TestToolCallTemplate:
 
     def test_sse_parser_skips_notifications(self, tool_call_code: str) -> None:
         """SSE parser should skip server notifications and return the result."""
-        assert "Skip server notifications" in tool_call_code
+        assert "multi-line SSE data fields" in tool_call_code
         assert '"method" in msg and "id" not in msg' in tool_call_code
