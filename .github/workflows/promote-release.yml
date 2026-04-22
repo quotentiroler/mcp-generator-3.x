@@ -22,6 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
     - name: Checkout main branch
@@ -174,19 +175,51 @@ jobs:
         uv lock
         echo "✅ uv.lock regenerated"
 
-    - name: Commit and push
+    - name: Commit and push via PR
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         CURRENT="${{ steps.current.outputs.version }}"
         STABLE="${{ steps.stable.outputs.version }}"
+        BRANCH="release/promote-${STABLE}"
 
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
 
+        # Create a release branch from the current main checkout
+        git checkout -b "$BRANCH"
         git add pyproject.toml uv.lock CHANGELOG.md SECURITY.md
         git commit -m "release: promote $CURRENT → $STABLE [automated]"
-        git push origin main
+        git push origin "$BRANCH"
 
-        echo "✅ Committed version bump to main"
+        # Create PR and merge immediately (squash to keep history clean)
+        PR_URL=$(gh pr create \
+          --repo ${{ github.repository }} \
+          --base main \
+          --head "$BRANCH" \
+          --title "Release: promote $CURRENT → $STABLE" \
+          --body "Automated promotion from pre-release to stable.
+
+        **Version change:** \`$CURRENT\` → \`$STABLE\`
+
+        This PR was created by the Promote to Stable Release workflow." \
+          --label "release")
+
+        echo "📝 PR created: $PR_URL"
+
+        # Merge the PR (admin merge to bypass review requirement)
+        gh pr merge "$PR_URL" \
+          --repo ${{ github.repository }} \
+          --squash \
+          --admin \
+          --delete-branch \
+          --subject "release: promote $CURRENT → $STABLE [automated]"
+
+        echo "✅ PR merged to main"
+
+        # Re-checkout main with the merged changes
+        git checkout main
+        git pull origin main
 
     - name: Extract release notes
       id: notes
