@@ -542,7 +542,10 @@ class TestFormGeneration:
     def test_form_models_have_unique_class_names(self) -> None:
         """Same schema used by different operations must produce unique class names."""
         code = render_display_module(
-            "pet", [], "pet_api", "PetApi",
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
             form_endpoints=self._make_form_endpoints(),
         )
         assert "class AddPetForm(BaseModel):" in code
@@ -550,7 +553,10 @@ class TestFormGeneration:
 
     def test_form_tool_references_correct_tool_name(self) -> None:
         code = render_display_module(
-            "pet", [], "pet_api", "PetApi",
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
             form_endpoints=self._make_form_endpoints(),
         )
         assert 'CallTool("Pet_add_pet")' in code
@@ -558,7 +564,10 @@ class TestFormGeneration:
 
     def test_form_tool_submit_label(self) -> None:
         code = render_display_module(
-            "pet", [], "pet_api", "PetApi",
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
             form_endpoints=self._make_form_endpoints(),
         )
         assert 'submit_label="Create Pet"' in code
@@ -566,14 +575,20 @@ class TestFormGeneration:
 
     def test_form_model_uses_literal_for_enum(self) -> None:
         code = render_display_module(
-            "pet", [], "pet_api", "PetApi",
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
             form_endpoints=self._make_form_endpoints(),
         )
         assert 'Literal["available", "pending", "sold"]' in code
 
     def test_form_model_required_field_has_no_default(self) -> None:
         code = render_display_module(
-            "pet", [], "pet_api", "PetApi",
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
             form_endpoints=self._make_form_endpoints(),
         )
         # "name" is required → no default=None
@@ -581,7 +596,10 @@ class TestFormGeneration:
 
     def test_form_model_optional_field_has_default_none(self) -> None:
         code = render_display_module(
-            "pet", [], "pet_api", "PetApi",
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
             form_endpoints=self._make_form_endpoints(),
         )
         # "id" is not required → has default=None
@@ -589,7 +607,10 @@ class TestFormGeneration:
 
     def test_form_imports_included(self) -> None:
         code = render_display_module(
-            "pet", [], "pet_api", "PetApi",
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
             form_endpoints=self._make_form_endpoints(),
         )
         assert "from pydantic import BaseModel, Field" in code
@@ -639,7 +660,10 @@ class TestFormGeneration:
             ),
         ]
         code = render_display_module(
-            "pet", display_endpoints, "pet_api", "PetApi",
+            "pet",
+            display_endpoints,
+            "pet_api",
+            "PetApi",
             form_endpoints=self._make_form_endpoints(),
         )
         # Has both display and form tools

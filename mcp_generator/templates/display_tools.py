@@ -222,7 +222,10 @@ def show_chart(
                     data_key = y_axes[0]["key"] if y_axes else "value"
                     PieChart(data=data, data_key=data_key, name_key=x_axis, show_legend=True)
                 else:
-                    series = [ChartSeries(data_key=y["key"], label=y.get("label", y["key"])) for y in y_axes]
+                    series = [
+                        ChartSeries(data_key=y["key"], label=y.get("label", y["key"]))
+                        for y in y_axes
+                    ]
                     ChartClass(data=data, series=series, x_axis=x_axis, show_legend=True)
 
     return PrefabApp(view=view)

@@ -316,6 +316,7 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                 spec = _json.load(_f)
 
             from openapi_py_fetch.generator import generate_client_package
+
             from .introspection import enrich_spec_tags
 
             generated_dir.mkdir(parents=True, exist_ok=True)
@@ -416,7 +417,10 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                     api_class_name = tag.title().replace("_", "") + "Api"
                     tag_forms = form_endpoints.get(tag, [])
                     code = render_display_module(
-                        tag, endpoints, api_var, api_class_name,
+                        tag,
+                        endpoints,
+                        api_var,
+                        api_class_name,
                         form_endpoints=tag_forms,
                     )
                     if code:
@@ -429,7 +433,10 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                         api_var = f"{tag}_api"
                         api_class_name = tag.title().replace("_", "") + "Api"
                         code = render_display_module(
-                            tag, [], api_var, api_class_name,
+                            tag,
+                            [],
+                            api_var,
+                            api_class_name,
                             form_endpoints=forms,
                         )
                         if code:

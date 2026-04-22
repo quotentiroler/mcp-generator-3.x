@@ -388,8 +388,7 @@ def _render_tool(spec: ToolSpec) -> str:
     # Build list of required parameter names for elicitation
     # When body has a data alternative (Form.from_model), body is not strictly required
     required_param_names = [
-        p.name for p in spec.parameters
-        if p.required and not (p.name == "body" and has_body)
+        p.name for p in spec.parameters if p.required and not (p.name == "body" and has_body)
     ]
     required_params_literal = ", ".join([f'"{n}"' for n in required_param_names])
 

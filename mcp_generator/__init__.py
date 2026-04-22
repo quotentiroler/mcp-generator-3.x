@@ -20,8 +20,9 @@ Usage:
 
 from importlib.metadata import version as _pkg_version
 
-from .cli import main
 from openapi_py_fetch.generator import generate_client_package
+
+from .cli import main
 from .generator import generate_all, generate_main_composition_server, generate_modular_servers
 from .introspection import (
     enrich_spec_tags,

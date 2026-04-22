@@ -384,7 +384,7 @@ def _render_pydantic_model(form: FormEndpoint) -> str:
     fields_code = "\n".join(field_lines)
     return f'''
 class {class_name}(BaseModel):
-    """{form.summary or f'{form.schema_name} form data.'}"""
+    """{form.summary or f"{form.schema_name} form data."}"""
 {fields_code}
 '''
 
@@ -575,10 +575,14 @@ def _get_api():
     # Assemble: header + helper + init + models + display tools + form tools
     parts = [header, helper, init_code]
     if models_code:
-        parts.append("\n# ============================================================================\n# Pydantic models for form generation\n# ============================================================================\n")
+        parts.append(
+            "\n# ============================================================================\n# Pydantic models for form generation\n# ============================================================================\n"
+        )
         parts.append(models_code)
     parts.append(tools_code)
     if forms_code:
-        parts.append("\n# ============================================================================\n# Form tools (auto-generated from request body schemas)\n# ============================================================================\n")
+        parts.append(
+            "\n# ============================================================================\n# Form tools (auto-generated from request body schemas)\n# ============================================================================\n"
+        )
         parts.append(forms_code)
     return "\n".join(parts) + "\n"
