@@ -271,6 +271,7 @@ def show_form(
                 with Form(
                     on_submit=CallTool(
                         submit_tool,
+                        arguments={f["name"]: "{{ " + f["name"] + " }}" for f in fields},
                         on_success=ShowToast("Success!", variant="success"),
                         on_error=ShowToast("Something went wrong", variant="error"),
                     )
@@ -280,6 +281,7 @@ def show_form(
                             Input(
                                 name=f["name"],
                                 label=f.get("label", f["name"]),
+                                input_type=f.get("type", "text"),
                                 required=f.get("required", False),
                                 placeholder=f.get("placeholder", ""),
                             )
