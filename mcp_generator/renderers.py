@@ -565,8 +565,12 @@ def generate_resource_for_endpoint(
         # Use last meaningful segment
         resource_name = path_segments[-1]
 
-    # Sanitize resource_name to a valid Python identifier (e.g. "group-doors" -> "group_doors")
+    # Keep original for URI scheme (hyphens/dots are valid in URI schemes)
+    uri_scheme = resource_name.lower()
+    # Sanitize for Python identifier usage (function name)
     resource_name = camel_to_snake(resource_name)
+    if not resource_name:
+        resource_name = camel_to_snake(operation_id) or "resource"
 
     # Build URI template
     # Replace /segment/{param} with scheme://segment/{param}
@@ -587,10 +591,10 @@ def generate_resource_for_endpoint(
 
     if query_param_names:
         query_str = "{?" + ",".join(query_param_names) + "}"
-        uri_template = f"{resource_name}://{uri_path}{query_str}"
+        uri_template = f"{uri_scheme}://{uri_path}{query_str}"
     elif path_params:
         # Has path params but no query params
-        uri_template = f"{resource_name}://{uri_path}"
+        uri_template = f"{uri_scheme}://{uri_path}"
     else:
         # No parameters at all - FastMCP will reject
         return None
