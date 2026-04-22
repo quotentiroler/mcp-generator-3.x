@@ -832,3 +832,55 @@ class TestNormalizeVersionSimplePrerelease:
 
         result = normalize_version("0.0.1-alpha.202510200205.3df5db6a")
         assert "a0+" in result, f"Existing format broke. Got: {result}"
+
+
+# ===========================================================================
+# Round 3 — CI failure: special chars in operation IDs
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Bug #18: camel_to_snake doesn't strip non-identifier characters
+#
+# Root cause: Operation IDs like "getAppsByApp*" or "getDocs-api" contain
+# special characters (* - etc.) that are not valid in Python identifiers.
+# camel_to_snake only handles CamelCase→snake_case but doesn't sanitize
+# these chars. The generated test functions have names like
+# "test_call_get_apps_by_app*" which is a SyntaxError.
+# This caused CI failure in "Test Examples" workflow (proxy-smart).
+# ---------------------------------------------------------------------------
+
+
+class TestCamelToSnakeSpecialChars:
+    """camel_to_snake must produce valid Python identifiers."""
+
+    def test_asterisk_removed(self) -> None:
+        from mcp_generator.utils import camel_to_snake
+
+        result = camel_to_snake("getAppsByApp*")
+        assert result.isidentifier(), (
+            f"'{result}' is not a valid Python identifier (from 'getAppsByApp*')"
+        )
+        assert "*" not in result
+
+    def test_hyphen_replaced(self) -> None:
+        from mcp_generator.utils import camel_to_snake
+
+        result = camel_to_snake("getDocs-api")
+        assert result.isidentifier(), (
+            f"'{result}' is not a valid Python identifier (from 'getDocs-api')"
+        )
+        assert "-" not in result
+
+    def test_multiple_special_chars(self) -> None:
+        from mcp_generator.utils import camel_to_snake
+
+        result = camel_to_snake("postFhir-serversByServer_idMtlsCertificates")
+        assert result.isidentifier(), f"'{result}' is not a valid Python identifier"
+
+    def test_leading_digit_after_strip(self) -> None:
+        """If stripping leaves a digit at the start, it must still be valid."""
+        from mcp_generator.utils import camel_to_snake
+
+        result = camel_to_snake("123BadName")
+        assert result.isidentifier(), f"'{result}' should be a valid Python identifier"

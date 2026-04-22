@@ -146,12 +146,24 @@ def camel_to_snake(name: str) -> str:
         HTMLParser -> html_parser
         APIClient  -> api_client
         PetApi     -> pet_api
+
+    Also sanitizes special characters to produce valid Python identifiers:
+        getAppsByApp* -> get_apps_by_app
+        getDocs-api   -> get_docs_api
     """
     # Insert _ between consecutive uppercase followed by uppercase+lowercase (e.g. HTMLParser -> HTML_Parser)
     name = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", name)
     # Insert _ between lowercase/digit and uppercase (e.g. getResponse -> get_Response)
     name = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
-    return name.lower()
+    name = name.lower()
+    # Replace non-alphanumeric characters (hyphens, asterisks, dots, etc.) with underscores
+    name = re.sub(r"[^a-z0-9_]", "_", name)
+    # Collapse consecutive underscores and strip leading/trailing
+    name = re.sub(r"_+", "_", name).strip("_")
+    # Ensure it doesn't start with a digit
+    if name and name[0].isdigit():
+        name = f"n{name}"
+    return name
 
 
 def get_pydantic_model_schema(model_class: Any) -> dict[str, Any] | None:
