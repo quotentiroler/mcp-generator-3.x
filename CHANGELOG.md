@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.2.2-alpha+683bc42] - 2026-04-22
+## [3.2.2] - 2026-04-22
 
 ### Changed
 
@@ -16,7 +16,6 @@
 - 📚 Documentation: Update changelog reference for PR #63
 
 **Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/64
-
 
 
 - 🔧 Chores & Improvements: Internal staging merge and CI/CD housekeeping
