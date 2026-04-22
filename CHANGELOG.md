@@ -6,6 +6,18 @@
 
 - Dependencies updated
 
+
+- 🔧 Chores & Improvements: Staging merge and CI/workflow updates
+  - Merge develop into staging (staging prep)
+  - Add PyPI publish workflow and related metadata
+  - Update PyPI metadata (classifiers, keywords, urls)
+  - Update contact information
+
+- 📚 Documentation: Update changelog reference for PR #63
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/64
+
+
 ## [3.2.1] - 2026-04-20
 
 - ✨ Features
