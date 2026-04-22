@@ -286,9 +286,13 @@ def get_security_config(base_dir: Path | None = None) -> SecurityConfig:
         print("   Using default security configuration")
         return SecurityConfig()
 
-    # Extract security schemes from components
+    # Extract security schemes from components (OpenAPI 3.x) or securityDefinitions (Swagger 2.0)
     components = spec.get("components", {})
     security_schemes = components.get("securitySchemes", {})
+
+    # Swagger 2.0 fallback
+    if not security_schemes:
+        security_schemes = spec.get("securityDefinitions", {})
 
     if not security_schemes:
         return SecurityConfig()
@@ -394,9 +398,30 @@ def get_resource_endpoints(base_dir: Path | None = None) -> dict[str, list[dict[
         path_params = []
         query_params = []
 
-        for param in get_op.get("parameters", []):
+        # Merge path-level + operation-level parameters (operation takes precedence)
+        all_params = list(path_item.get("parameters", []))
+        {p.get("name") for p in get_op.get("parameters", []) if "name" in p}
+        for op_param in get_op.get("parameters", []):
+            all_params.append(op_param)
+        # Deduplicate: keep operation-level params, skip path-level if same name
+        seen_names: set[str] = set()
+        deduped_params = []
+        for param in reversed(all_params):
+            # Resolve $ref parameters
+            if "$ref" in param:
+                param = _resolve_ref(spec, param["$ref"])
+            name = param.get("name")
+            if name and name not in seen_names:
+                seen_names.add(name)
+                deduped_params.append(param)
+        deduped_params.reverse()
+
+        for param in deduped_params:
             param_name = param.get("name")
             param_in = param.get("in")
+
+            if not param_name:
+                continue
 
             if param_in == "path":
                 path_params.append(param_name)
@@ -514,6 +539,11 @@ def _parse_schema_fields(
 
         prop_type = resolved_prop.get("type", "string")
         fmt = resolved_prop.get("format", "")
+
+        # OpenAPI 3.1: nullable types use type: ["string", "null"]
+        if isinstance(prop_type, list):
+            non_null = [t for t in prop_type if t != "null"]
+            prop_type = non_null[0] if non_null else "string"
 
         # Enum
         enum_values = resolved_prop.get("enum", [])

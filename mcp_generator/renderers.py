@@ -405,7 +405,7 @@ async def {spec.tool_name}({", ".join(func_params)}) -> dict[str, Any]:
         # --- Elicitation: ask user for missing required parameters ---
         _required = [{required_params_literal}]
         _locals = locals()
-        _missing = [p for p in _required if not _locals.get(p)]
+        _missing = [p for p in _required if _locals.get(p) is None]
         if _missing:
             try:
                 _elicit_msg = f"Missing required parameter(s) for {spec.tool_name}: {{', '.join(_missing)}}. Please provide values."
@@ -638,29 +638,43 @@ def generate_resource_for_endpoint(
 def render_resource(spec: ResourceSpec) -> str:
     """Render resource template function code from specification."""
 
+    def _safe_identifier(name: str) -> str:
+        """Sanitize a parameter name to a valid Python identifier."""
+        safe = name.replace("-", "_").replace(".", "_")
+        if safe.isidentifier() and not __import__("keyword").iskeyword(safe):
+            return safe
+        return f"param_{safe}"
+
     # Build function parameters (path params + query params)
     func_params = ["ctx: Context"]
 
+    # Map original param names to safe Python identifiers
+    path_param_map: dict[str, str] = {}
     for param in spec.path_params:
-        func_params.append(f"{param}: str")
+        safe = _safe_identifier(param)
+        path_param_map[param] = safe
+        func_params.append(f"{safe}: str")
 
     # FastMCP requires ALL query parameters to be optional with default values
+    query_param_map: dict[str, str] = {}
     for qparam in spec.query_params:
-        # All query params must have defaults for FastMCP resource templates
-        default_val = "None" if "str" in qparam.type_hint else "0"
-        func_params.append(f"{qparam.name}: {qparam.type_hint} | None = {default_val}")
+        safe = _safe_identifier(qparam.name)
+        query_param_map[qparam.name] = safe
+        func_params.append(f"{safe}: {qparam.type_hint} | None = None")
 
-    # Build method call arguments
+    # Build method call arguments (use original names for API calls)
     call_args_list = []
     for param in spec.path_params:
-        call_args_list.append(f"{param}={param}")
+        safe = path_param_map[param]
+        call_args_list.append(f"{param}={safe}" if param == safe else f"{safe}={safe}")
     for qparam in spec.query_params:
-        call_args_list.append(f"{qparam.name}={qparam.name}")
+        safe = query_param_map[qparam.name]
+        call_args_list.append(f"{qparam.name}={safe}" if qparam.name == safe else f"{safe}={safe}")
 
     call_args = ", ".join(call_args_list) if call_args_list else ""
 
     # Build docstring
-    param_docs = "\n    ".join([f"{p}: Path parameter" for p in spec.path_params])
+    param_docs = "\n    ".join([f"{path_param_map[p]}: Path parameter" for p in spec.path_params])
     if spec.query_params:
         param_docs += "\n    " + "\n    ".join(
             [f"{qp.name}: {qp.description or 'Query parameter'}" for qp in spec.query_params]
