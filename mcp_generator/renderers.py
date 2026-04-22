@@ -565,6 +565,9 @@ def generate_resource_for_endpoint(
         # Use last meaningful segment
         resource_name = path_segments[-1]
 
+    # Sanitize resource_name to a valid Python identifier (e.g. "group-doors" -> "group_doors")
+    resource_name = camel_to_snake(resource_name)
+
     # Build URI template
     # Replace /segment/{param} with scheme://segment/{param}
     uri_path = path.lstrip("/")

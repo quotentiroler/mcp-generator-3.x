@@ -884,3 +884,93 @@ class TestCamelToSnakeSpecialChars:
 
         result = camel_to_snake("123BadName")
         assert result.isidentifier(), f"'{result}' should be a valid Python identifier"
+
+
+# ---------------------------------------------------------------------------
+# Bug #19: Resource names from path segments not sanitized for Python
+#
+# Root cause: generate_resource_for_endpoint uses the raw last path segment
+# as resource_name (e.g. "group-doors" from "/admin/group-doors").
+# render_resource then emits "async def group-doors_resource(...)" which is
+# a SyntaxError. The resource_name must be a valid Python identifier.
+# This caused CI failure: proxy-smart server wouldn't start.
+# ---------------------------------------------------------------------------
+
+
+class TestResourceNameSanitization:
+    """Resource names derived from path segments must be valid Python identifiers."""
+
+    def test_hyphenated_path_segment(self) -> None:
+        from mcp_generator.renderers import generate_resource_for_endpoint
+
+        endpoint = {
+            "path": "/admin/group-doors",
+            "operation_id": "getGroupDoors",
+            "path_params": [],
+            "query_params": [
+                {
+                    "name": "limit",
+                    "required": False,
+                    "schema": {"type": "integer"},
+                    "description": "",
+                },
+            ],
+            "summary": "List group doors",
+            "description": "List group doors",
+            "responses": {},
+            "tags": ["admin"],
+        }
+        spec = generate_resource_for_endpoint("admin_api", endpoint, "get_group_doors")
+        assert spec is not None
+        assert spec.resource_name.isidentifier(), (
+            f"resource_name '{spec.resource_name}' is not a valid Python identifier"
+        )
+
+    def test_dotted_path_segment(self) -> None:
+        from mcp_generator.renderers import generate_resource_for_endpoint
+
+        endpoint = {
+            "path": "/api/v2.0/items/{id}",
+            "operation_id": "getItem",
+            "path_params": ["id"],
+            "query_params": [],
+            "summary": "Get item",
+            "description": "",
+            "responses": {},
+            "tags": ["items"],
+        }
+        spec = generate_resource_for_endpoint("items_api", endpoint, "get_item")
+        assert spec is not None
+        assert spec.resource_name.isidentifier(), (
+            f"resource_name '{spec.resource_name}' is not a valid Python identifier"
+        )
+
+    def test_resource_function_compiles(self) -> None:
+        """The full rendered resource code must be valid Python syntax."""
+        from mcp_generator.models import ParameterInfo, ResourceSpec
+        from mcp_generator.renderers import render_resource
+
+        spec = ResourceSpec(
+            resource_name="group_doors",
+            uri_template="group-doors:///admin/group-doors{?limit}",
+            method_name="get_group_doors",
+            api_var_name="admin_api",
+            path_params=[],
+            query_params=[
+                ParameterInfo(
+                    name="limit",
+                    type_hint="int",
+                    required=False,
+                    description="",
+                    example_json=None,
+                    is_pydantic=False,
+                    pydantic_class=None,
+                )
+            ],
+            description="List group doors",
+        )
+        code = render_resource(spec)
+        try:
+            compile(code, "<test>", "exec")
+        except SyntaxError as e:
+            pytest.fail(f"Rendered resource code has SyntaxError: {e}")
