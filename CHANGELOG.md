@@ -28,6 +28,12 @@ Notes:
 **Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/67
 
 
+
+- 🔧 Chores & Improvements: Internal updates and maintenance
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/70
+
+
 ## [3.2.1] - 2026-04-20
 
 - ✨ Features
