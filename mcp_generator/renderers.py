@@ -67,6 +67,7 @@ def render_pyproject_template(
     # Build dependencies list
     dependencies = [
         "fastmcp[apps]>=3.2.0,<4.0.0" if enable_apps else "fastmcp>=3.2.0,<4.0.0",
+        "openapi-py-fetch>=0.2.0",
         "httpx>=0.23.0",
         "pydantic>=2.0.0,<3.0.0",
         "python-dateutil>=2.8.2",
