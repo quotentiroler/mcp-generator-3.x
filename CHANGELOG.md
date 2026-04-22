@@ -6,6 +6,15 @@
 
 - Dependencies updated
 
+
+- 🔧 Chores & Improvements: CI/CD stabilization for staging workflow auto-updates, PR title/body synchronization, and automated metadata handling
+- ⚠️ Breaking Changes: None
+- 🐛 Bug Fixes: Fix ci workflow to update PR titles/bodies on new pushes; ensure PRs target main correctly
+- 📚 Documentation: Update CHANGELOG references for automated PRs (internal docs updates)
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/72
+
+
 ## [3.2.2] - 2026-04-22
 
 ### Changed
