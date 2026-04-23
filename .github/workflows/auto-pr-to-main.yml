@@ -59,7 +59,6 @@ jobs:
           }
 
     - name: Get version from pyproject.toml
-      if: steps.check_pr.outputs.pr_exists == 'false'
       id: get_version
       run: |
         python3 << 'EOF' > version.txt
@@ -74,7 +73,6 @@ jobs:
         echo "📦 Version: $VERSION"
 
     - name: Get commit info
-      if: steps.check_pr.outputs.pr_exists == 'false'
       id: commit_info
       run: |
         # Count commits ahead of main
@@ -82,7 +80,6 @@ jobs:
         echo "commit_count=$COMMIT_COUNT" >> $GITHUB_OUTPUT
 
     - name: Extract changelog for current version
-      if: steps.check_pr.outputs.pr_exists == 'false'
       id: changelog
       run: |
         python << 'EOF'
@@ -111,6 +108,59 @@ jobs:
                 f.write(f"Release version {version_base}")
             print(f"⚠️  No changelog found for {version_base}")
         EOF
+
+    - name: Update existing PR
+      if: steps.check_pr.outputs.pr_exists == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const version = '${{ steps.get_version.outputs.version }}';
+          const versionBase = version.split('+')[0];
+          const commitCount = '${{ steps.commit_info.outputs.commit_count }}';
+          const prNumber = ${{ steps.check_pr.outputs.pr_number }};
+
+          // Read changelog
+          const changelog = fs.readFileSync('pr_changelog.txt', 'utf8');
+
+          const title = `Release: ${versionBase} (${commitCount} commit${commitCount > 1 ? 's' : ''})`;
+
+          const body = `## 🚀 Release ${versionBase}
+
+          This PR was automatically created to release version **${versionBase}** from \`staging\` into \`main\`.
+
+          ### 📋 Changelog
+
+          ${changelog}
+
+          ### 📊 Changes
+          - **${commitCount}** commit${commitCount > 1 ? 's' : ''} ahead of main
+
+          ### ✅ Pre-Merge Checklist
+          - [ ] All CI tests passing
+          - [ ] CHANGELOG.md is up to date
+          - [ ] Version number is correct in pyproject.toml
+          - [ ] Documentation is updated
+          - [ ] Breaking changes are documented (if any)
+
+          ### 📦 Post-Merge Actions
+          After merging, this will automatically:
+          - Create a GitHub release with tag \`v${versionBase}\`
+          - Update version metadata in develop branch
+          - Trigger any release notifications
+
+          ---
+          *This PR was automatically created by the Auto PR to Main workflow*`;
+
+          await github.rest.pulls.update({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: prNumber,
+            title: title,
+            body: body,
+          });
+
+          console.log(`✅ Updated PR #${prNumber} — title: ${title}`);
 
     - name: Create Pull Request
       if: steps.check_pr.outputs.pr_exists == 'false'
@@ -199,14 +249,15 @@ jobs:
         echo "=========================================="
         echo "AUTO PR TO MAIN WORKFLOW SUMMARY"
         echo "=========================================="
+        echo "Version: ${{ steps.get_version.outputs.version }}"
+        echo "Commits ahead: ${{ steps.commit_info.outputs.commit_count }}"
         if [ "${{ steps.check_pr.outputs.pr_exists }}" == "true" ]; then
-          echo "✅ PR already exists: #${{ steps.check_pr.outputs.pr_number }}"
+          echo "✅ Updated existing PR: #${{ steps.check_pr.outputs.pr_number }}"
           echo "   URL: ${{ steps.check_pr.outputs.pr_url }}"
         elif [ -n "${{ steps.create_pr.outputs.pr_number }}" ]; then
           echo "✅ Created new PR: #${{ steps.create_pr.outputs.pr_number }}"
           echo "   URL: ${{ steps.create_pr.outputs.pr_url }}"
-          echo "Version: ${{ steps.get_version.outputs.version }}"
         else
-          echo "❌ Failed to create PR"
+          echo "❌ Failed to create or update PR"
         fi
         echo "=========================================="
