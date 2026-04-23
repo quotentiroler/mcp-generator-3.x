@@ -290,8 +290,9 @@ def show_form(
                                 SetState(key="submitting", value=False),
                                 ShowToast("Submitted successfully!", variant="success"),
                                 SendMessage(
-                                    content=f"The form '{title}' was submitted successfully."
-                                    " Here is the result: $result"
+                                    content=f"I just submitted the form '{title}'"
+                                    f" via tool '{submit_tool}'. Please show me"
+                                    " what was created."
                                 ),
                             ],
                             on_error=[
