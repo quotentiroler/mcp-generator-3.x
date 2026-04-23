@@ -9,6 +9,7 @@ from pathlib import Path
 from .introspection import (
     get_api_metadata,
     get_api_modules,
+    get_body_schemas,
     get_resource_endpoints,
     get_security_config,
 )
@@ -33,6 +34,9 @@ def generate_modular_servers(
 
     # Get API modules dynamically (sort keys for deterministic output)
     api_modules = get_api_modules(base_dir)
+
+    # Get request body schemas for form data coercion (flat → nested)
+    body_schemas = get_body_schemas(base_dir)
 
     # Get resource endpoints if enabled
     resources_by_tag = {}
@@ -60,7 +64,8 @@ def generate_modular_servers(
         resource_endpoints = resources_by_tag.get(tag_name, [])
 
         module_spec = generate_server_module(
-            api_var_name, api_class, resource_endpoints, exclude_methods=seen_methods
+            api_var_name, api_class, resource_endpoints,
+            exclude_methods=seen_methods, body_schemas=body_schemas,
         )
         servers[module_spec.module_name] = module_spec
         total_tools += module_spec.tool_count

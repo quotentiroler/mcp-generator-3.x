@@ -129,6 +129,7 @@ class ToolSpec:
     deprecated: bool = False
     timeout: int | None = None  # Tool timeout in seconds
     validate_output: bool | None = None  # FastMCP 3.1 output validation (None = server default)
+    body_schema: dict | None = None  # Simplified request body JSON schema for form data coercion
 
 
 @dataclass

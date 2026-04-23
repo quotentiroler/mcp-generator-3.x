@@ -504,3 +504,130 @@ class TestGeneratedToolFeatures:
     def test_sampling_fallback_on_failure(self, tool_code: str) -> None:
         """If sampling fails, tool should still raise the original API error."""
         assert "API Error:" in tool_code
+
+
+# ---------------------------------------------------------------------------
+# Body schema coercion in generated tools
+# ---------------------------------------------------------------------------
+
+
+class TestBodySchemaCoercion:
+    """Verify that body_schemas inject _coerce_form_data into generated modules."""
+
+    def _make_method(self) -> type:
+        """Create a fake API class with a method that has a 'body' parameter."""
+
+        class FakeApi:
+            def add_pet(self, body: str, **kwargs) -> object:  # noqa: D102
+                """Add a new pet to the store."""
+
+        return FakeApi
+
+    def test_coerce_function_generated_when_schema_present(self) -> None:
+        from mcp_generator.renderers import generate_server_module
+
+        FakeApi = self._make_method()
+        schemas = {
+            "add_pet": {
+                "name": {"type": "string"},
+                "category": {"type": "object", "properties": {"name": {"type": "string"}}},
+            }
+        }
+        module = generate_server_module(
+            "pet_api", FakeApi, body_schemas=schemas
+        )
+        assert "def _coerce_form_data(" in module.code
+
+    def test_coerce_function_absent_when_no_schemas(self) -> None:
+        from mcp_generator.renderers import generate_server_module
+
+        FakeApi = self._make_method()
+        module = generate_server_module("pet_api", FakeApi, body_schemas=None)
+        assert "_coerce_form_data" not in module.code
+
+    def test_body_schema_literal_embedded_in_tool(self) -> None:
+        from mcp_generator.renderers import generate_tool_for_method
+
+        FakeApi = self._make_method()
+        schemas = {
+            "add_pet": {
+                "name": {"type": "string"},
+                "photoUrls": {"type": "array", "items": {"type": "string"}},
+            }
+        }
+        code = generate_tool_for_method(
+            "pet_api", "add_pet", FakeApi.add_pet, body_schemas=schemas
+        )
+        assert "_body_schema" in code
+        assert "_coerce_form_data(data, _body_schema)" in code
+        assert "'photoUrls'" in code
+
+    def test_plain_json_dumps_when_no_schema_for_method(self) -> None:
+        from mcp_generator.renderers import generate_tool_for_method
+
+        FakeApi = self._make_method()
+        # body_schemas exists but doesn't have an entry for add_pet
+        schemas = {"update_pet": {"name": {"type": "string"}}}
+        code = generate_tool_for_method(
+            "pet_api", "add_pet", FakeApi.add_pet, body_schemas=schemas
+        )
+        assert "_coerce_form_data" not in code
+        assert "_json.dumps(data)" in code
+
+    def test_coerce_function_reshapes_flat_data(self) -> None:
+        """Execute the generated _coerce_form_data function to verify runtime behavior."""
+        from mcp_generator.renderers import generate_server_module
+
+        FakeApi = self._make_method()
+        schemas = {
+            "add_pet": {
+                "name": {"type": "string"},
+                "category": {
+                    "type": "object",
+                    "properties": {"id": {"type": "integer"}, "name": {"type": "string"}},
+                },
+                "photoUrls": {"type": "array", "items": {"type": "string"}},
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {"name": {"type": "string"}},
+                    },
+                },
+                "status": {"type": "string", "enum": ["available", "pending", "sold"]},
+            }
+        }
+        module = generate_server_module("pet_api", FakeApi, body_schemas=schemas)
+        # Extract just the _coerce_form_data function from the generated code
+        # (the full module imports openapi_client which isn't available in tests)
+        lines = module.code.split("\n")
+        func_start = None
+        func_end = None
+        for i, line in enumerate(lines):
+            if line.startswith("def _coerce_form_data("):
+                func_start = i
+            elif func_start is not None and line != "" and not line.startswith(" ") and i > func_start + 1:
+                func_end = i
+                break
+        assert func_start is not None, "_coerce_form_data not found in generated code"
+        if func_end is None:
+            func_end = len(lines)
+        func_code = "\n".join(lines[func_start:func_end])
+        ns: dict = {}
+        exec(compile(func_code, "<test>", "exec"), ns)  # noqa: S102
+        coerce = ns["_coerce_form_data"]
+
+        flat = {
+            "name": "Buddy",
+            "category": "Dogs",
+            "photoUrls": "https://example.com/photo.jpg",
+            "tags": "friendly, cute",
+            "status": "available",
+        }
+        result = coerce(flat, schemas["add_pet"])
+
+        assert result["name"] == "Buddy"
+        assert result["status"] == "available"
+        assert result["category"] == {"name": "Dogs"}
+        assert result["photoUrls"] == ["https://example.com/photo.jpg"]
+        assert result["tags"] == [{"name": "friendly"}, {"name": "cute"}]

@@ -262,6 +262,10 @@ def show_form(
     if not PREFAB_AVAILABLE:
         return {"title": title, "fields": fields, "submit_tool": submit_tool}
 
+    # Wrap all form field values into a single 'data' dict so generated
+    # tools receive them via their ``data: dict`` parameter.
+    _data_payload = {f["name"]: "{{ " + f["name"] + " }}" for f in fields}
+
     with Column(gap=5, css_class="p-6 max-w-2xl") as view:
         Heading(title)
         if subtitle:
@@ -271,7 +275,7 @@ def show_form(
                 with Form(
                     on_submit=CallTool(
                         submit_tool,
-                        arguments={f["name"]: "{{ " + f["name"] + " }}" for f in fields},
+                        arguments={"data": _data_payload},
                         on_success=ShowToast("Success!", variant="success"),
                         on_error=ShowToast("Something went wrong", variant="error"),
                     )

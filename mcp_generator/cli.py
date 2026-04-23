@@ -307,38 +307,37 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         openapi_spec = enhanced_spec_path
         print(f"   📄 Enhanced spec: {enhanced_spec_path.name}")
 
-    # Ensure API client exists before trying to introspect it
+    # Always (re-)generate the API client so method bodies stay in sync
+    # with the current openapi-py-fetch runtime.
     generated_dir = src_dir / "generated_openapi"
     openapi_client_dir = generated_dir / "openapi_client"
 
-    if not (openapi_client_dir.exists() and (openapi_client_dir / "__init__.py").exists()):
-        print("\n🔨 Generating Python API client from OpenAPI specification...")
-        print("   This is a one-time step that may take a few moments.")
+    print("\n🔨 Generating Python API client from OpenAPI specification...")
 
-        try:
-            import json as _json
+    try:
+        import json as _json
 
-            with open(openapi_spec, encoding="utf-8") as _f:
-                spec = _json.load(_f)
+        with open(openapi_spec, encoding="utf-8") as _f:
+            spec = _json.load(_f)
 
-            from openapi_py_fetch.generator import generate_client_package
+        from openapi_py_fetch.generator import generate_client_package
 
-            from .introspection import enrich_spec_tags
+        from .introspection import enrich_spec_tags
 
-            generated_dir.mkdir(parents=True, exist_ok=True)
-            ok = generate_client_package(spec, generated_dir, enrich_tags_fn=enrich_spec_tags)
-            if not ok:
-                print("\n❌ API Client Generation Failed")
-                print("\n💡 Verify your openapi.json is valid:")
-                print("      python -m mcp_generator.scripts.validate_openapi")
-                sys.exit(1)
-
-            print("   ✅ API client generated successfully")
-        except Exception as e:
-            print(f"\n❌ Error generating API client: {e}")
+        generated_dir.mkdir(parents=True, exist_ok=True)
+        ok = generate_client_package(spec, generated_dir, enrich_tags_fn=enrich_spec_tags)
+        if not ok:
+            print("\n❌ API Client Generation Failed")
             print("\n💡 Verify your openapi.json is valid:")
             print("      python -m mcp_generator.scripts.validate_openapi")
             sys.exit(1)
+
+        print("   ✅ API client generated successfully")
+    except Exception as e:
+        print(f"\n❌ Error generating API client: {e}")
+        print("\n💡 Verify your openapi.json is valid:")
+        print("      python -m mcp_generator.scripts.validate_openapi")
+        sys.exit(1)
 
     try:
         # Generate all components

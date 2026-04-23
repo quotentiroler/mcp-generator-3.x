@@ -32,6 +32,13 @@ MINIMAL_OPENAPI_SPEC: dict = {
                 "operationId": "createPet",
                 "tags": ["pet"],
                 "summary": "Create a pet",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {"$ref": "#/components/schemas/Pet"}
+                        }
+                    }
+                },
                 "responses": {"201": {"description": "Created"}},
             },
         },
@@ -45,6 +52,45 @@ MINIMAL_OPENAPI_SPEC: dict = {
         },
     },
     "tags": [{"name": "pet", "description": "Pet operations"}],
+    "components": {
+        "schemas": {
+            "Pet": {
+                "type": "object",
+                "required": ["name", "photoUrls"],
+                "properties": {
+                    "id": {"type": "integer", "format": "int64"},
+                    "name": {"type": "string"},
+                    "category": {"$ref": "#/components/schemas/Category"},
+                    "photoUrls": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"$ref": "#/components/schemas/Tag"},
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["available", "pending", "sold"],
+                    },
+                },
+            },
+            "Category": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer", "format": "int64"},
+                    "name": {"type": "string"},
+                },
+            },
+            "Tag": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer", "format": "int64"},
+                    "name": {"type": "string"},
+                },
+            },
+        }
+    },
 }
 
 OPENAPI_SPEC_WITH_SECURITY: dict = {
