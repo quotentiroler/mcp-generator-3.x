@@ -498,7 +498,7 @@ class TestRenderDisplayModule:
 
 
 class TestFormGeneration:
-    """Test Form.from_model() code generation from FormEndpoint data."""
+    """Test manual form code generation from FormEndpoint data."""
 
     def _make_form_endpoints(self) -> list[FormEndpoint]:
         return [
@@ -559,8 +559,8 @@ class TestFormGeneration:
             "PetApi",
             form_endpoints=self._make_form_endpoints(),
         )
-        assert 'CallTool("Pet_add_pet")' in code
-        assert 'CallTool("Pet_update_pet")' in code
+        assert '"Pet_add_pet"' in code
+        assert '"Pet_update_pet"' in code
 
     def test_form_tool_submit_label(self) -> None:
         code = render_display_module(
@@ -570,8 +570,8 @@ class TestFormGeneration:
             "PetApi",
             form_endpoints=self._make_form_endpoints(),
         )
-        assert 'submit_label="Create Pet"' in code
-        assert 'submit_label="Update Pet"' in code
+        assert '"Create Pet"' in code
+        assert '"Update Pet"' in code
 
     def test_form_model_uses_literal_for_enum(self) -> None:
         code = render_display_module(
@@ -614,8 +614,9 @@ class TestFormGeneration:
             form_endpoints=self._make_form_endpoints(),
         )
         assert "from pydantic import BaseModel, Field" in code
-        assert "from prefab_ui.components import Form" in code
-        assert "from prefab_ui.actions.mcp import CallTool" in code
+        assert "from prefab_ui.components import Button, Form, Input, Select, SelectOption" in code
+        assert "from prefab_ui.actions import SetState, ShowToast" in code
+        assert "from prefab_ui.actions.mcp import CallTool, SendMessage" in code
 
     def test_no_forms_no_form_imports(self) -> None:
         """When no form endpoints are provided, no form imports should be present."""
@@ -669,4 +670,80 @@ class TestFormGeneration:
         # Has both display and form tools
         assert "def view_get_pet_by_id_detail" in code
         assert "def form_add_pet" in code
-        assert "Form.from_model(" in code
+        assert "CallTool(" in code
+        assert "SetState(" in code
+
+    def test_form_tool_has_loading_state(self) -> None:
+        """Form tool must include submitting state for button disable."""
+        code = render_display_module(
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
+            form_endpoints=self._make_form_endpoints(),
+        )
+        assert 'let={"submitting": False}' in code
+        assert "STATE.submitting" in code
+
+    def test_form_tool_has_success_feedback(self) -> None:
+        """Form tool must include toast + sendMessage on success."""
+        code = render_display_module(
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
+            form_endpoints=self._make_form_endpoints(),
+        )
+        assert "ShowToast(" in code
+        assert "SendMessage(" in code
+
+    def test_form_tool_wraps_data(self) -> None:
+        """Form tool must wrap field bindings under a 'data' key."""
+        code = render_display_module(
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
+            form_endpoints=self._make_form_endpoints(),
+        )
+        assert '"data":' in code
+        assert "{{ name }}" in code
+        assert "{{ id }}" in code
+
+    def test_form_tool_renders_select_for_enum(self) -> None:
+        """Enum fields must render as Select dropdowns."""
+        code = render_display_module(
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
+            form_endpoints=self._make_form_endpoints(),
+        )
+        assert "Select(" in code
+        assert 'SelectOption(value="available"' in code
+        assert 'SelectOption(value="pending"' in code
+        assert 'SelectOption(value="sold"' in code
+
+    def test_form_tool_renders_input_for_string(self) -> None:
+        """String fields must render as Input components."""
+        code = render_display_module(
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
+            form_endpoints=self._make_form_endpoints(),
+        )
+        assert 'Input(name="name"' in code
+        assert 'input_type="text"' in code
+
+    def test_form_tool_renders_number_input(self) -> None:
+        """Integer fields must render as number inputs."""
+        code = render_display_module(
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
+            form_endpoints=self._make_form_endpoints(),
+        )
+        assert 'Input(name="id"' in code
+        assert 'input_type="number"' in code

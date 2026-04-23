@@ -390,15 +390,56 @@ class {class_name}(BaseModel):
 
 
 def _render_form_tool(form: FormEndpoint) -> str:
-    """Generate a display tool that renders a Form.from_model() for a POST/PUT endpoint."""
-    op_name = camel_to_snake(form.operation_id).title().replace("_", "")
-    class_name = f"{op_name}Form"
+    """Generate a display tool that renders a manual form for a POST/PUT endpoint.
+
+    Produces a form with:
+    - Loading state (``submitting``) that disables the button during submission
+    - ``CallTool`` wrapped in a ``SetState`` action chain
+    - ``ShowToast`` + ``SendMessage`` on success / error
+    - ``Select`` dropdowns for enum fields
+    - Body coercion via the ``data`` key
+    """
     func_name = f"form_{camel_to_snake(form.operation_id)}"
     summary = form.summary or f"Submit {form.schema_name or 'data'}"
     action = "Create" if form.http_method == "post" else "Update"
     submit_label = f"{action} {form.schema_name}" if form.schema_name else "Submit"
 
-    return f'''
+    # Build field rendering lines and data payload bindings
+    field_lines: list[str] = []
+    data_bindings: dict[str, str] = {}
+    pad = " " * 24  # indentation inside Column(gap=4)
+
+    for f in form.fields:
+        if f.is_array or f.is_nested_object:
+            continue
+
+        data_bindings[f.name] = "{{ " + f.name + " }}"
+        label = f.name.replace("_", " ").title()
+        is_required = f.name in form.required_fields
+
+        if f.is_enum and f.enum_values:
+            field_lines.append(
+                f'{pad}with Select(name="{f.name}", placeholder="{label}"):'
+            )
+            for val in f.enum_values:
+                field_lines.append(
+                    f'{pad}    SelectOption(value="{val}", label="{val}")'
+                )
+        else:
+            input_type = "number" if f.python_type in ("int", "float") else "text"
+            field_lines.append(
+                f'{pad}Input(name="{f.name}", input_type="{input_type}", '
+                f'placeholder="{label}", required={is_required})'
+            )
+
+    if not field_lines:
+        return ""
+
+    fields_code = "\n".join(field_lines)
+    data_payload = repr(data_bindings)
+
+    # Escape braces for f-string: {{ → literal {
+    code = f'''
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
     tags=["display", "{form.tag}"],
@@ -407,16 +448,42 @@ def _render_form_tool(form: FormEndpoint) -> str:
 def {func_name}() -> Any:
     """{summary}"""
     if not PREFAB_AVAILABLE:
-        return {{"form": "{class_name}", "submit_tool": "{form.tool_name}"}}
+        return {{"form": "{form.schema_name}", "submit_tool": "{form.tool_name}"}}
 
-    return PrefabApp(
-        view=Form.from_model(
-            {class_name},
-            on_submit=CallTool("{form.tool_name}"),
-            submit_label="{submit_label}",
-        )
-    )
+    from prefab_ui.rx import STATE
+
+    with Column(gap=5, css_class="p-6 max-w-2xl") as view:
+        Heading("{summary}")
+        with Card():
+            with CardContent(css_class="py-4"):
+                with Form(
+                    let={{"submitting": False}},
+                    on_submit=[
+                        SetState(key="submitting", value=True),
+                        CallTool(
+                            "{form.tool_name}",
+                            arguments={{"data": {data_payload}}},
+                            on_success=[
+                                SetState(key="submitting", value=False),
+                                ShowToast("Submitted successfully!", variant="success"),
+                                SendMessage(
+                                    content="The form '{summary}' was submitted"
+                                    " successfully. Please show me what was created."
+                                ),
+                            ],
+                            on_error=[
+                                SetState(key="submitting", value=False),
+                                ShowToast("Something went wrong", variant="error"),
+                            ],
+                        ),
+                    ],
+                ):
+                    with Column(gap=4):
+{fields_code}
+                        Button("{submit_label}", css_class="w-full", disabled=STATE.submitting)
+    return PrefabApp(view=view)
 '''
+    return code
 
 
 # ---------------------------------------------------------------------------
@@ -479,8 +546,9 @@ def render_display_module(
 from typing import Literal
 from pydantic import BaseModel, Field
 try:
-    from prefab_ui.components import Form
-    from prefab_ui.actions.mcp import CallTool
+    from prefab_ui.components import Button, Form, Input, Select, SelectOption
+    from prefab_ui.actions import SetState, ShowToast
+    from prefab_ui.actions.mcp import CallTool, SendMessage
 except ImportError:
     pass
 """

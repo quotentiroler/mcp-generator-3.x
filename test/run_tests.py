@@ -1,5 +1,5 @@
 """
-Test runner for Swagger Petstore
+Test runner for Swagger Petstore - OpenAPI 3.0
 
 This script:
 1. Starts the MCP server in HTTP mode
@@ -75,7 +75,7 @@ def run_tests(test_filter: str | None = None):
     test_dir = project_root / "test" / "generated"
 
     # Server configuration
-    server_script = generated_mcp_dir / "swagger_petstore_mcp_generated.py"
+    server_script = generated_mcp_dir / "swagger_petstore_openapi_mcp_generated.py"
     server_url = os.getenv("MCP_SERVER_URL", "http://localhost:8000/mcp")
     server_port = os.getenv("MCP_SERVER_PORT", "8000")
 
@@ -317,7 +317,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Test runner for Swagger Petstore",
+        description="Test runner for Swagger Petstore - OpenAPI 3.0",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
@@ -332,7 +332,7 @@ def main():
     print("""
 +--------------------------------------------------------------+
 |          MCP Server Test Runner                              |
-|          Swagger Petstore                                        |
+|          Swagger Petstore - OpenAPI 3.0                          |
 +--------------------------------------------------------------+
 """)
 
