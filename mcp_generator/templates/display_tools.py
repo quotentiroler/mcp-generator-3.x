@@ -288,10 +288,10 @@ def show_form(
                             arguments={"data": _data_payload},
                             on_success=[
                                 SetState(key="submitting", value=False),
-                                ShowToast("Created successfully!", variant="success"),
+                                ShowToast("Submitted successfully!", variant="success"),
                                 SendMessage(
                                     content=f"The form '{title}' was submitted successfully."
-                                    f" Please show me the result."
+                                    " Here is the result: $result"
                                 ),
                             ],
                             on_error=[
