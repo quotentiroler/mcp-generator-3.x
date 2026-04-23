@@ -6,6 +6,13 @@
 
 - Dependencies updated
 
+
+- ✨ Features: Upgrade to FastMCP 3.2.4 with Keycloak auth, elicit fix, and RFC 8707 integration
+- 🔧 Chores & Improvements: Bump dependency to >=3.2.4 and apply deprecation-related fixes for ctx.elicit() (response_type=str)
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/76
+
+
 ## [3.2.3]P26-04-23
 
 ### Changed
