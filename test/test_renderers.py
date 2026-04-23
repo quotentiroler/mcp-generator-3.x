@@ -21,7 +21,7 @@ class TestRenderPyprojectTemplate:
         content = render_pyproject_template(
             api_metadata, security_config_none, "test_api", total_tools=5
         )
-        assert "fastmcp>=3.2.0,<4.0.0" in content
+        assert "fastmcp>=3.2.4,<4.0.0" in content
 
     def test_does_not_contain_fastmcp_2x_dep(
         self, api_metadata: ApiMetadata, security_config_none: SecurityConfig
@@ -73,7 +73,7 @@ class TestRenderPyprojectTemplate:
         content = render_pyproject_template(
             api_metadata, security_config_none, "test_api", total_tools=1, enable_apps=True
         )
-        assert "fastmcp[apps]>=3.2.0,<4.0.0" in content
+        assert "fastmcp[apps]>=3.2.4,<4.0.0" in content
 
     def test_apps_dep_not_present_when_disabled(
         self, api_metadata: ApiMetadata, security_config_none: SecurityConfig
@@ -475,6 +475,10 @@ class TestGeneratedToolFeatures:
     def test_elicitation_for_missing_params(self, tool_code_required_params: str) -> None:
         """Tools with required params should include elicitation block."""
         assert "ctx.elicit(" in tool_code_required_params
+
+    def test_elicitation_uses_response_type(self, tool_code_required_params: str) -> None:
+        """Elicitation should use response_type=str (FastMCP 3.2.4+)."""
+        assert "response_type=str" in tool_code_required_params
 
     def test_elicitation_checks_missing(self, tool_code_required_params: str) -> None:
         """Elicitation should check for missing required parameters."""

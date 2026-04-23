@@ -356,15 +356,23 @@ class RequireScopesMiddleware:
 def create_remote_auth_provider(
     backend_url: Optional[str] = None,
     required_scopes: Optional[list[str]] = None,
+    resource_url: Optional[str] = None,
 ) -> RemoteAuthProvider:
-    """Create a RemoteAuthProvider for backend OAuth discovery."""
+    """Create a RemoteAuthProvider for backend OAuth discovery.
+
+    When resource_url is provided, tokens are audience-bound to that URL
+    per RFC 8707, preventing token reuse across MCP resources.
+    """
 
     backend_url = backend_url or API_BASE_URL
     required_scopes = required_scopes or [{scopes_str}]
+    resource_url = resource_url or os.environ.get("MCP_RESOURCE_URL")
 
     logger.info("Creating RemoteAuthProvider")
     logger.info("  Backend API: %s", backend_url)
     logger.info("  Required scopes: %s", required_scopes)
+    if resource_url:
+        logger.info("  Resource URL (RFC 8707): %s", resource_url)
 
     jwt_verifier = JWTVerifier(
         jwks_uri="{jwks_uri}",
@@ -373,13 +381,19 @@ def create_remote_auth_provider(
         required_scopes=required_scopes,
     )
 
-    auth_provider = RemoteAuthProvider(
-        token_verifier=jwt_verifier,
-        authorization_servers=[AnyHttpUrl(backend_url)],
-        base_url=AnyHttpUrl(backend_url),
-        resource_name="MCP Server",
-        resource_documentation=AnyHttpUrl(f"{{backend_url}}/docs"),
-    )
+    provider_kwargs: dict[str, Any] = {{
+        "token_verifier": jwt_verifier,
+        "authorization_servers": [AnyHttpUrl(backend_url)],
+        "base_url": AnyHttpUrl(backend_url),
+        "resource_name": "MCP Server",
+        "resource_documentation": AnyHttpUrl(f"{{backend_url}}/docs"),
+    }}
+
+    # RFC 8707: bind token audience to resource URL (FastMCP 3.2.4+)
+    if resource_url:
+        provider_kwargs["resource_url"] = AnyHttpUrl(resource_url)
+
+    auth_provider = RemoteAuthProvider(**provider_kwargs)
 
     logger.info("RemoteAuthProvider created - OAuth metadata endpoints advertised")
     return auth_provider
@@ -597,5 +611,52 @@ def create_oauth_proxy(
 
     except Exception as exc:
         logger.error("Failed to create OAuthProxy: %s", exc)
+        return None
+
+
+def create_keycloak_provider(
+    config: dict | None = None,
+) -> Optional[Any]:
+    """Create a Keycloak authentication provider.
+
+    Uses FastMCP's built-in KeycloakAuthProvider (a slim RemoteAuthProvider
+    subclass) that auto-discovers OIDC endpoints from the Keycloak realm URL
+    and validates JWT tokens via the realm's JWKS endpoint.
+
+    Requires FastMCP >= 3.2.4 and Keycloak >= 26.6.0 (native DCR support).
+
+    Args:
+        config: Keycloak configuration dict with keys:
+            - realm_url: Full URL to the Keycloak realm
+              (e.g. "https://keycloak.example.com/realms/myrealm")
+            - required_scopes: Optional list of required scopes
+            - audience: Optional audience claim (defaults to realm URL)
+
+    Returns:
+        KeycloakAuthProvider instance or None if not available/configured.
+    """
+    try:
+        from fastmcp.server.auth.providers.keycloak import KeycloakAuthProvider
+    except ImportError:
+        logger.warning("KeycloakAuthProvider not available (requires fastmcp>=3.2.4)")
+        return None
+
+    config = config or {{}}
+    realm_url = config.get("realm_url")
+
+    if not realm_url:
+        logger.error("Keycloak requires realm_url (e.g. 'https://keycloak.example.com/realms/myrealm')")
+        return None
+
+    try:
+        provider = KeycloakAuthProvider(
+            realm_url=realm_url,
+            required_scopes=config.get("required_scopes"),
+            audience=config.get("audience"),
+        )
+        logger.info("Keycloak provider configured: %s", realm_url)
+        return provider
+    except Exception as exc:
+        logger.error("Failed to create Keycloak provider: %s", exc)
         return None
 '''

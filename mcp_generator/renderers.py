@@ -66,7 +66,7 @@ def render_pyproject_template(
 
     # Build dependencies list
     dependencies = [
-        "fastmcp[apps]>=3.2.0,<4.0.0" if enable_apps else "fastmcp>=3.2.0,<4.0.0",
+        "fastmcp[apps]>=3.2.4,<4.0.0" if enable_apps else "fastmcp>=3.2.4,<4.0.0",
         "openapi-py-fetch>=0.2.0",
         "httpx>=0.23.0",
         "pydantic>=2.0.0,<3.0.0",
@@ -409,7 +409,7 @@ async def {spec.tool_name}({", ".join(func_params)}) -> dict[str, Any]:
         if _missing:
             try:
                 _elicit_msg = f"Missing required parameter(s) for {spec.tool_name}: {{', '.join(_missing)}}. Please provide values."
-                _elicit_resp = await ctx.elicit(_elicit_msg, None)
+                _elicit_resp = await ctx.elicit(_elicit_msg, response_type=str)
                 if hasattr(_elicit_resp, "action") and _elicit_resp.action != "accept":
                     return {{"error": "User declined to provide required parameters"}}
             except Exception:
