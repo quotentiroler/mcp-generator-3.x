@@ -361,6 +361,15 @@ class TestShowFormPrefab:
         inputs = [c for c in inner_col.children if type(c).__name__ == "Input"]
         return form, inputs
 
+    def _get_calltool(self, form: Any) -> Any:
+        """Extract the CallTool action from form.on_submit (may be a list)."""
+        from prefab_ui.actions.mcp import CallTool
+
+        actions = form.on_submit
+        if isinstance(actions, list):
+            return next(a for a in actions if isinstance(a, CallTool))
+        return actions
+
     def test_calltool_arguments_bind_field_values(self) -> None:
         """CallTool must wrap field bindings under a 'data' key."""
         mod = _load_display_tools()
@@ -373,7 +382,7 @@ class TestShowFormPrefab:
             submit_tool="add_pet",
         )
         form, _inputs = self._get_form_and_inputs(result)
-        calltool = form.on_submit
+        calltool = self._get_calltool(form)
         assert calltool.tool == "add_pet"
         assert "data" in calltool.arguments, "CallTool arguments must contain 'data' key"
         data = calltool.arguments["data"]
@@ -395,7 +404,7 @@ class TestShowFormPrefab:
             submit_tool="register_pet",
         )
         form, _inputs = self._get_form_and_inputs(result)
-        calltool = form.on_submit
+        calltool = self._get_calltool(form)
         data = calltool.arguments["data"]
         for f in fields:
             assert f["name"] in data, (
@@ -413,7 +422,7 @@ class TestShowFormPrefab:
             submit_tool="create_item",
         )
         form, _inputs = self._get_form_and_inputs(result)
-        calltool = form.on_submit
+        calltool = self._get_calltool(form)
         assert set(calltool.arguments.keys()) == {"data"}
         assert set(calltool.arguments["data"].keys()) == {"title"}
 
