@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 # Conditional Prefab imports — graceful fallback when prefab-ui is not installed
 # ---------------------------------------------------------------------------
 try:
-    from prefab_ui.actions import SetState, ShowToast
-    from prefab_ui.actions.mcp import CallTool, SendMessage
+    from prefab_ui.actions import ShowToast
+    from prefab_ui.actions.mcp import CallTool
     from prefab_ui.app import PrefabApp
     from prefab_ui.components import (
         Badge,
@@ -267,8 +267,6 @@ def show_form(
     if not PREFAB_AVAILABLE:
         return {"title": title, "fields": fields, "submit_tool": submit_tool}
 
-    from prefab_ui.rx import STATE
-
     # Wrap all form field values into a single 'data' dict so generated
     # tools receive them via their ``data: dict`` parameter.
     _data_payload = {f["name"]: "{{ " + f["name"] + " }}" for f in fields}
@@ -280,27 +278,12 @@ def show_form(
         with Card():
             with CardContent(css_class="py-4"):
                 with Form(
-                    let={"submitting": False},
-                    on_submit=[
-                        SetState(key="submitting", value=True),
-                        CallTool(
-                            submit_tool,
-                            arguments={"data": _data_payload},
-                            on_success=[
-                                SetState(key="submitting", value=False),
-                                ShowToast("Submitted successfully!", variant="success"),
-                                SendMessage(
-                                    content=f"I just submitted the form '{title}'"
-                                    f" via tool '{submit_tool}'. Please show me"
-                                    " what was created."
-                                ),
-                            ],
-                            on_error=[
-                                SetState(key="submitting", value=False),
-                                ShowToast("Something went wrong", variant="error"),
-                            ],
-                        ),
-                    ],
+                    on_submit=CallTool(
+                        submit_tool,
+                        arguments={"data": _data_payload},
+                        on_success=ShowToast("Success!", variant="success"),
+                        on_error=ShowToast("Something went wrong", variant="error"),
+                    )
                 ):
                     with Column(gap=4):
                         for f in fields:
@@ -324,11 +307,7 @@ def show_form(
                                     required=f.get("required", False),
                                     placeholder=f.get("placeholder", ""),
                                 )
-                        Button(
-                            submit_label,
-                            css_class="w-full",
-                            disabled=STATE.submitting,
-                        )
+                        Button(submit_label, css_class="w-full")
 
     return PrefabApp(view=view)
 
