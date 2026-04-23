@@ -15,6 +15,57 @@
 **Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/72
 
 
+
+- 🔧 Chores & Improvements: CI/CD tidy-up and automated staging sync
+  - fix(ci): auto-sync main back to staging after release
+  - fix(ci): auto-pr-to-main updates existing PR title/body on new pushes
+  - Staging: Merge develop into staging (various commits) to prevent divergence
+  - chore: merge main into staging after PR #71 merge [automated]
+  - 618f688: fix(ci): auto-pr-to-main updates existing PR title/body on new pushes
+  - 5870dd5: Staging: Merge develop into staging (25 commits)
+  - 7445647: chore: merge main into staging to resolve branch divergence
+  - 3563b52, 7a0695f: fix(ci): promote workflow uses PR instead of direct push to main
+  - ed81e1e, 201121c: fix(ci): replace [skip ci] with [automated] in bot commits to prevent release skip
+  - a720e6b, 4499c79: feat(ci): add Promote to Stable Release workflow
+  - 38...: various automated changelog and metadata updates
+
+- 🐛 Bug Fixes: CI/testing and tooling improvements
+  - fix(tests): rewrite SSE parser to handle multi-line events and large responses
+  - fix(tests): escape newline in template f-string assertion
+  - fix(tests): increase httpx timeout and improve SSE error diagnostics
+  - fix: show_form CallTool missing arguments and input_type binding
+  - fix: warn when OpenAPI spec has relative server URL
+  - fix: filter wildcard catch-all paths from resource URI schemes
+  - fix: separate URI scheme from Python identifier in resource generation
+  - fix: sanitize resource names from path segments for valid Python identifiers
+  - fix: sanitize special chars in camel_to_snake for valid Python identifiers
+  - fix: 5 more TDD-verified bugs — display params, camel_to_snake, response refs, version normalization
+  - fix: 8 TDD-verified bugs — nullable types, path params, Swagger 2.0 auth, falsy checks, param sanitization, query defaults, metadata escaping
+  - fix: SSE parser skips notifications before result in tools/call tests
+  - fix: resolve all Ruff lint and format errors for CI
+
+- 📚 Documentation: CHANGELOG updates automated
+  - docs: update CHANGELOG.md for PR #70, #64, #63, #72 (automated)
+  - docs: update install instructions for PyPI (pip install mcp-generator)
+
+- ✨ Features: CI/test tooling enhancements
+  - feat(ci): add Promote to Stable Release workflow
+  - feat: add real tools/call E2E test template
+  - feat: generate Form.from_model() tools from POST/PUT request body schemas
+  - refactor: replace generate_client.py with openapi-py-fetch dependency
+
+- ⚠️ Breaking Changes
+  - None detected in this release
+
+- 🔧 Chores & Improvements: Misc maintenance
+  - style: fix ruff formatting in cli.py
+  - 82fd7c8: style: fix ruff formatting in cli.py
+  - 8b248a3: chore: update version metadata with commit 7445647
+  - 0e41d4d: chore: update version metadata with commit 8048bcb
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/74
+
+
 ## [3.2.2] - 2026-04-22
 
 ### Changed
