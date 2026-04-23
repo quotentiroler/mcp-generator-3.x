@@ -62,6 +62,13 @@
       "required_scopes": null,
       "description": "PropelAuth enterprise authentication provider (FastMCP 3.1)"
     },
+    "keycloak": {
+      "enabled": false,
+      "realm_url": null,
+      "required_scopes": null,
+      "audience": null,
+      "description": "Keycloak OAuth provider with native DCR support (FastMCP 3.2.4+, requires Keycloak 26.6.0+)"
+    },
     "oauth_proxy": {
       "enabled": false,
       "upstream_authorization_endpoint": null,

@@ -98,6 +98,7 @@ def generate_main_composition_server(
       - ``PingMiddleware`` for HTTP keepalive
       - ``MultiAuth`` for composing multiple token verifiers
       - ``PropelAuth`` as built-in auth provider option
+      - ``KeycloakAuthProvider`` for Keycloak enterprise auth (FastMCP 3.2.4+)
       - ``OAuthProxy`` for bridging non-DCR IdPs (Auth0, Okta, Azure AD)
       - ``search_result_serializer`` hook for custom search output
       - Component versioning via ``version=`` on ``@mcp.tool()``
@@ -165,7 +166,7 @@ if _generative_ui_enabled:
     except ImportError:
         _generative_ui_provider = None
         import logging as _logging
-        _logging.getLogger(__name__).warning("GenerativeUI requires fastmcp[apps]>=3.2.0")
+        _logging.getLogger(__name__).warning("GenerativeUI requires fastmcp[apps]>=3.2.4")
 else:
     _generative_ui_provider = None
 """
@@ -245,7 +246,7 @@ from middleware.authentication import ApiClientContextMiddleware
     auth_validation = ""
 
     if security_config.has_authentication():
-        auth_imports += """from middleware.oauth_provider import create_jwt_verifier, build_authentication_stack, RequireScopesMiddleware, create_multi_auth_verifier, create_propelauth_provider, create_oauth_proxy
+        auth_imports += """from middleware.oauth_provider import create_jwt_verifier, build_authentication_stack, RequireScopesMiddleware, create_multi_auth_verifier, create_propelauth_provider, create_keycloak_provider, create_oauth_proxy
 """
         auth_argparse = """
     parser.add_argument(
@@ -270,9 +271,10 @@ from middleware.authentication import ApiClientContextMiddleware
             logger.info("  🔧 ASGI Middleware: Authentication (JWT validation) at HTTP layer")
             logger.info("  🔑 JWT validation: Enabled via Starlette auth backend + scope guard")
 
-            # Check if MultiAuth is configured (FastMCP 3.1)
+            # Check auth provider priority: PropelAuth > Keycloak > MultiAuth > JWT
             _multi_auth_cfg = _features_config.get("multi_auth", {})
             _propelauth_cfg = _features_config.get("propelauth", {})
+            _keycloak_cfg = _features_config.get("keycloak", {})
             jwt_verifier = None
 
             if _propelauth_cfg.get("enabled", False):
@@ -282,6 +284,13 @@ from middleware.authentication import ApiClientContextMiddleware
                     logger.info("  🔐 PropelAuth provider configured")
                     # PropelAuth acts as both auth provider and verifier
                     jwt_verifier = propelauth_provider
+
+            if jwt_verifier is None and _keycloak_cfg.get("enabled", False):
+                # Use Keycloak native DCR provider (FastMCP 3.2.4+)
+                keycloak_provider = create_keycloak_provider(_keycloak_cfg)
+                if keycloak_provider:
+                    logger.info("  🔐 Keycloak provider configured")
+                    jwt_verifier = keycloak_provider
 
             if jwt_verifier is None and _multi_auth_cfg.get("enabled", False):
                 # MultiAuth: compose multiple token verifiers
