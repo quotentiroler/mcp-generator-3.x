@@ -481,6 +481,13 @@ def _render_delete_tool(delete: DeleteEndpoint) -> str:
     params_str = ", ".join(params)
     call_args_repr = repr(call_args) if call_args else "{}"
 
+    # Build a context line showing what is being deleted (e.g. "petId: {petId}")
+    if delete.path_params:
+        id_parts = ", ".join(f'{p["name"]}: {{{p["name"]}}}' for p in delete.path_params)
+        context_line = f'                Muted(f"Resource: {id_parts}")'
+    else:
+        context_line = ""
+
     code = f'''
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
@@ -496,6 +503,7 @@ def {func_name}({params_str}) -> Any:
         with Dialog(title="Confirm Deletion", description="This action cannot be undone."):
             Button("{summary}", variant="destructive")
             with Column(gap=4, css_class="py-2"):
+{context_line}
                 Muted("Are you sure you want to proceed? This will permanently delete the resource.")
                 with Row(gap=2, justify="end"):
                     Button("Cancel", variant="outline", on_click=CloseOverlay())

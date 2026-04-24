@@ -815,6 +815,35 @@ class TestDeleteDialogGeneration:
         assert "CloseOverlay" in code
         assert "ShowToast" in code
 
+    def test_delete_dialog_shows_resource_identifier(self) -> None:
+        """Delete dialog body must show the resource identifier being deleted."""
+        code = render_display_module(
+            "pet", [], "pet_api", "PetApi",
+            delete_endpoints=self._make_delete_endpoints(),
+        )
+        # Should show the param name and value in the confirmation message
+        assert "petId" in code
+        # The confirmation text should interpolate the parameter
+        assert "f\"" in code or "{petId}" in code
+
+    def test_delete_dialog_shows_username_for_user(self) -> None:
+        """Delete dialog for user must show the username being deleted."""
+        delete_endpoints = [
+            DeleteEndpoint(
+                operation_id="deleteUser",
+                path="/user/{username}",
+                summary="Delete user resource.",
+                tag="user",
+                path_params=[{"name": "username", "required": True, "schema": {"type": "string"}}],
+                tool_name="User_delete_user",
+            ),
+        ]
+        code = render_display_module(
+            "user", [], "user_api", "UserApi",
+            delete_endpoints=delete_endpoints,
+        )
+        assert "{username}" in code
+
 
 # ===========================================================================
 # Test: Tabbed detail views for nested objects
