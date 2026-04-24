@@ -187,6 +187,13 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
     )
 
     parser.add_argument(
+        "--schema-depth",
+        type=int,
+        default=3,
+        help="Max nesting depth for response schema parsing (default: 3, increase for deeply nested APIs)",
+    )
+
+    parser.add_argument(
         "--overlay",
         type=str,
         default=None,
@@ -418,8 +425,8 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                 )
                 from .writers import write_display_modules
 
-                display_endpoints = get_display_endpoints(src_dir)
-                form_endpoints = get_form_endpoints(src_dir)
+                display_endpoints = get_display_endpoints(src_dir, max_depth=args.schema_depth)
+                form_endpoints = get_form_endpoints(src_dir, max_depth=args.schema_depth)
                 delete_endpoints = get_delete_endpoints(src_dir)
                 display_modules = {}
                 for tag, endpoints in display_endpoints.items():

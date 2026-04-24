@@ -469,16 +469,29 @@ _OPENAPI_TYPE_MAP: dict[str, str] = {
 }
 
 
+_ref_cache: dict[tuple[int, str], dict[str, Any]] = {}
+
+
 def _resolve_ref(spec: dict[str, Any], ref: str) -> dict[str, Any]:
-    """Resolve a $ref pointer (e.g. '#/components/schemas/Pet') within the spec."""
+    """Resolve a $ref pointer (e.g. '#/components/schemas/Pet') within the spec.
+
+    Results are cached per (spec identity, ref) for performance on large specs.
+    """
+    cache_key = (id(spec), ref)
+    if cache_key in _ref_cache:
+        return _ref_cache[cache_key]
+
     parts = ref.lstrip("#/").split("/")
     node: Any = spec
     for part in parts:
         if isinstance(node, dict):
             node = node.get(part, {})
         else:
+            _ref_cache[cache_key] = {}
             return {}
-    return node if isinstance(node, dict) else {}
+    result = node if isinstance(node, dict) else {}
+    _ref_cache[cache_key] = result
+    return result
 
 
 def _ref_name(ref: str) -> str:
@@ -511,18 +524,14 @@ def _parse_schema_fields(
         visited = visited | {ref}
         schema = _resolve_ref(spec, ref)
 
-    # Handle allOf / oneOf / anyOf — merge or pick first
-    if "allOf" in schema:
-        merged: dict[str, Any] = {}
-        for sub in schema["allOf"]:
-            resolved = _resolve_ref(spec, sub["$ref"]) if "$ref" in sub else sub
-            merged.update(resolved.get("properties", {}))
-        schema = {"type": "object", "properties": merged}
-
-    for combiner in ("oneOf", "anyOf"):
+    # Handle allOf / oneOf / anyOf — merge properties from all variants
+    for combiner in ("allOf", "oneOf", "anyOf"):
         if combiner in schema and schema[combiner]:
-            first = schema[combiner][0]
-            schema = _resolve_ref(spec, first["$ref"]) if "$ref" in first else first
+            merged_props: dict[str, Any] = {}
+            for sub in schema[combiner]:
+                resolved = _resolve_ref(spec, sub["$ref"]) if "$ref" in sub else sub
+                merged_props.update(resolved.get("properties", {}))
+            schema = {"type": "object", "properties": merged_props}
             break
 
     properties = schema.get("properties", {})
@@ -583,7 +592,7 @@ def _parse_schema_fields(
 
 
 def _extract_response_schema(
-    responses: dict[str, Any], spec: dict[str, Any]
+    responses: dict[str, Any], spec: dict[str, Any], *, max_depth: int = 3
 ) -> ResponseSchema | None:
     """Extract and parse the success response schema from an endpoint's responses dict."""
     # Find the success response (200, 201, or default)
@@ -596,7 +605,12 @@ def _extract_response_schema(
         success_resp = _resolve_ref(spec, success_resp["$ref"])
 
     content = success_resp.get("content", {})
-    json_content = content.get("application/json", content.get("*/*", {}))
+    json_content = (
+        content.get("application/json")
+        or content.get("application/fhir+json")
+        or content.get("*/*")
+        or {}
+    )
     schema = json_content.get("schema", {})
 
     if not schema:
@@ -621,19 +635,21 @@ def _extract_response_schema(
         items = schema.get("items", {})
         if "$ref" in items:
             schema_name = schema_name or _ref_name(items["$ref"])
-        fields = _parse_schema_fields(items, spec)
+        fields = _parse_schema_fields(items, spec, max_depth=max_depth)
         if not fields:
             return None
         return ResponseSchema(fields=fields, is_array=True, schema_name=schema_name)
 
     # Single object
-    fields = _parse_schema_fields(schema, spec)
+    fields = _parse_schema_fields(schema, spec, max_depth=max_depth)
     if not fields:
         return None
     return ResponseSchema(fields=fields, is_object=True, schema_name=schema_name)
 
 
-def get_display_endpoints(base_dir: Path | None = None) -> dict[str, list[DisplayEndpoint]]:
+def get_display_endpoints(
+    base_dir: Path | None = None, *, max_depth: int = 3
+) -> dict[str, list[DisplayEndpoint]]:
     """Extract GET endpoints with parsed response schemas for display tool generation.
 
     Returns:
@@ -663,7 +679,7 @@ def get_display_endpoints(base_dir: Path | None = None) -> dict[str, list[Displa
             continue
 
         responses = get_op.get("responses", {})
-        response_schema = _extract_response_schema(responses, spec)
+        response_schema = _extract_response_schema(responses, spec, max_depth=max_depth)
 
         # Skip endpoints without parseable response schemas
         if response_schema is None:
@@ -766,7 +782,9 @@ def _extract_request_body_schema(
     return schema_name, fields, required_names
 
 
-def get_form_endpoints(base_dir: Path | None = None) -> dict[str, list[FormEndpoint]]:
+def get_form_endpoints(
+    base_dir: Path | None = None, *, max_depth: int = 3
+) -> dict[str, list[FormEndpoint]]:
     """Extract POST/PUT endpoints with request body schemas for form generation.
 
     Returns:
