@@ -1,7 +1,7 @@
 """Tests for Phase 2: response schema extraction and display tool generation."""
 
+from mcp_generator.display_helpers import table_columns_for_fields
 from mcp_generator.display_renderers import (
-    _table_columns_for_fields,
     _tool_name_for_endpoint,
     render_display_module,
 )
@@ -10,7 +10,7 @@ from mcp_generator.introspection import (
     _parse_schema_fields,
     _resolve_ref,
 )
-from mcp_generator.models import DisplayEndpoint, FormEndpoint, ResponseField, ResponseSchema
+from mcp_generator.models import DeleteEndpoint, DisplayEndpoint, FormEndpoint, ResponseField, ResponseSchema
 
 # ---------------------------------------------------------------------------
 # Test OpenAPI spec with various response shapes
@@ -366,7 +366,7 @@ class TestToolNameForEndpoint:
 
 
 # ---------------------------------------------------------------------------
-# _table_columns_for_fields
+# table_columns_for_fields
 # ---------------------------------------------------------------------------
 
 
@@ -377,7 +377,7 @@ class TestTableColumnsForFields:
             ResponseField(name="tags", python_type="list", is_array=True),
             ResponseField(name="name", python_type="str"),
         ]
-        columns = _table_columns_for_fields(fields)
+        columns = table_columns_for_fields(fields)
         keys = [c["key"] for c in columns]
         assert "id" in keys
         assert "name" in keys
@@ -388,13 +388,13 @@ class TestTableColumnsForFields:
             ResponseField(name="id", python_type="int"),
             ResponseField(name="category", python_type="dict", is_nested_object=True),
         ]
-        columns = _table_columns_for_fields(fields)
+        columns = table_columns_for_fields(fields)
         keys = [c["key"] for c in columns]
         assert "category" not in keys
 
     def test_labels_are_title_case(self) -> None:
         fields = [ResponseField(name="first_name", python_type="str")]
-        columns = _table_columns_for_fields(fields)
+        columns = table_columns_for_fields(fields)
         assert columns[0]["label"] == "First Name"
 
 
@@ -614,9 +614,11 @@ class TestFormGeneration:
             form_endpoints=self._make_form_endpoints(),
         )
         assert "from pydantic import BaseModel, Field" in code
-        assert "from prefab_ui.components import Button, Form, Input, Select, SelectOption" in code
+        # Check essential form components are imported (sorted, may include extras like Loader)
+        for comp in ("Button", "Form", "Input", "Loader", "Select", "SelectOption"):
+            assert comp in code, f"Missing import: {comp}"
         assert "from prefab_ui.actions import SetState, ShowToast" in code
-        assert "from prefab_ui.actions.mcp import CallTool, SendMessage" in code
+        assert "from prefab_ui.actions.mcp import CallTool" in code
 
     def test_no_forms_no_form_imports(self) -> None:
         """When no form endpoints are provided, no form imports should be present."""
@@ -686,7 +688,7 @@ class TestFormGeneration:
         assert "STATE.submitting" in code
 
     def test_form_tool_has_success_feedback(self) -> None:
-        """Form tool must include toast + sendMessage on success."""
+        """Form tool must include toast on success."""
         code = render_display_module(
             "pet",
             [],
@@ -695,7 +697,7 @@ class TestFormGeneration:
             form_endpoints=self._make_form_endpoints(),
         )
         assert "ShowToast(" in code
-        assert "SendMessage(" in code
+        assert "SendMessage(" not in code
 
     def test_form_tool_wraps_data(self) -> None:
         """Form tool must wrap field bindings under a 'data' key."""
@@ -747,3 +749,252 @@ class TestFormGeneration:
         )
         assert 'Input(name="id"' in code
         assert 'input_type="number"' in code
+
+
+# ===========================================================================
+# Test: Delete confirmation dialog generation
+# ===========================================================================
+
+
+class TestDeleteDialogGeneration:
+    """Tests for delete confirmation dialog tools."""
+
+    @staticmethod
+    def _make_delete_endpoints() -> list[DeleteEndpoint]:
+        return [
+            DeleteEndpoint(
+                operation_id="deletePet",
+                path="/pet/{petId}",
+                summary="Deletes a pet",
+                tag="pet",
+                path_params=[{"name": "petId", "required": True, "schema": {"type": "integer"}}],
+                tool_name="Pet_delete_pet",
+            ),
+        ]
+
+    def test_delete_tool_generated(self) -> None:
+        """Delete endpoint produces a tool function."""
+        code = render_display_module(
+            "pet", [], "pet_api", "PetApi",
+            delete_endpoints=self._make_delete_endpoints(),
+        )
+        assert "def action_delete_delete_pet(" in code
+
+    def test_delete_tool_has_dialog(self) -> None:
+        """Delete tool must render a Dialog confirmation."""
+        code = render_display_module(
+            "pet", [], "pet_api", "PetApi",
+            delete_endpoints=self._make_delete_endpoints(),
+        )
+        assert 'Dialog(title="Confirm Deletion"' in code
+        assert "CloseOverlay()" in code
+
+    def test_delete_tool_calls_correct_tool(self) -> None:
+        """Delete dialog must call the correct namespaced tool."""
+        code = render_display_module(
+            "pet", [], "pet_api", "PetApi",
+            delete_endpoints=self._make_delete_endpoints(),
+        )
+        assert '"Pet_delete_pet"' in code
+
+    def test_delete_tool_has_destructive_button(self) -> None:
+        """Delete dialog must have a destructive variant button."""
+        code = render_display_module(
+            "pet", [], "pet_api", "PetApi",
+            delete_endpoints=self._make_delete_endpoints(),
+        )
+        assert 'variant="destructive"' in code
+
+    def test_delete_imports_included(self) -> None:
+        """Delete tools must import Dialog, CloseOverlay, etc."""
+        code = render_display_module(
+            "pet", [], "pet_api", "PetApi",
+            delete_endpoints=self._make_delete_endpoints(),
+        )
+        assert "Dialog" in code
+        assert "CloseOverlay" in code
+        assert "ShowToast" in code
+
+
+# ===========================================================================
+# Test: Tabbed detail views for nested objects
+# ===========================================================================
+
+
+class TestTabbedDetailViews:
+    """Tests for Tabs rendering in detail views with nested data."""
+
+    @staticmethod
+    def _make_nested_schema() -> ResponseSchema:
+        return ResponseSchema(
+            fields=[
+                ResponseField(name="id", python_type="int"),
+                ResponseField(name="name", python_type="str"),
+                ResponseField(
+                    name="category",
+                    python_type="dict",
+                    is_nested_object=True,
+                    nested_fields=[
+                        ResponseField(name="id", python_type="int"),
+                        ResponseField(name="name", python_type="str"),
+                    ],
+                ),
+                ResponseField(
+                    name="tags",
+                    python_type="list",
+                    is_array=True,
+                    nested_fields=[
+                        ResponseField(name="id", python_type="int"),
+                        ResponseField(name="name", python_type="str"),
+                    ],
+                ),
+            ],
+            is_object=True,
+            schema_name="Pet",
+        )
+
+    def test_tabs_rendered_for_nested_detail(self) -> None:
+        """Detail view with nested objects must include Tabs."""
+        endpoints = [
+            DisplayEndpoint(
+                operation_id="getPetById",
+                path="/pets/{petId}",
+                http_method="get",
+                summary="Get pet",
+                tag="pet",
+                path_params=[{"name": "petId", "required": True, "schema": {"type": "integer"}}],
+                query_params=[],
+                response_schema=self._make_nested_schema(),
+            ),
+        ]
+        code = render_display_module("pet", endpoints, "pet_api", "PetApi")
+        assert "Tabs(" in code
+        assert 'Tab("Category")' in code
+        assert 'Tab("Tags")' in code
+
+    def test_tabs_import_included(self) -> None:
+        """Tabs and Tab must be imported when nested fields exist."""
+        endpoints = [
+            DisplayEndpoint(
+                operation_id="getPetById",
+                path="/pets/{petId}",
+                http_method="get",
+                summary="Get pet",
+                tag="pet",
+                path_params=[{"name": "petId", "required": True, "schema": {"type": "integer"}}],
+                query_params=[],
+                response_schema=self._make_nested_schema(),
+            ),
+        ]
+        code = render_display_module("pet", endpoints, "pet_api", "PetApi")
+        assert "Tab" in code
+        assert "Tabs" in code
+
+
+# ===========================================================================
+# Test: ExpandableRow in tables
+# ===========================================================================
+
+
+class TestExpandableRowTable:
+    """Tests for ExpandableRow in table views."""
+
+    @staticmethod
+    def _make_table_schema_with_nested() -> ResponseSchema:
+        return ResponseSchema(
+            fields=[
+                ResponseField(name="id", python_type="int"),
+                ResponseField(name="name", python_type="str"),
+                ResponseField(
+                    name="category",
+                    python_type="dict",
+                    is_nested_object=True,
+                    nested_fields=[
+                        ResponseField(name="id", python_type="int"),
+                        ResponseField(name="name", python_type="str"),
+                    ],
+                ),
+            ],
+            is_array=True,
+            schema_name="Pet",
+        )
+
+    def test_expandable_row_used_for_nested_table(self) -> None:
+        """Table with nested fields must use ExpandableRow."""
+        endpoints = [
+            DisplayEndpoint(
+                operation_id="findPets",
+                path="/pets",
+                http_method="get",
+                summary="Find pets",
+                tag="pet",
+                path_params=[],
+                query_params=[],
+                response_schema=self._make_table_schema_with_nested(),
+            ),
+        ]
+        code = render_display_module("pet", endpoints, "pet_api", "PetApi")
+        assert "ExpandableRow(" in code
+        assert "_build_" in code
+
+    def test_expandable_row_import(self) -> None:
+        """ExpandableRow must be imported."""
+        endpoints = [
+            DisplayEndpoint(
+                operation_id="findPets",
+                path="/pets",
+                http_method="get",
+                summary="Find pets",
+                tag="pet",
+                path_params=[],
+                query_params=[],
+                response_schema=self._make_table_schema_with_nested(),
+            ),
+        ]
+        code = render_display_module("pet", endpoints, "pet_api", "PetApi")
+        assert "ExpandableRow" in code
+
+
+# ===========================================================================
+# Test: Loader in form tools
+# ===========================================================================
+
+
+class TestLoaderInForms:
+    """Tests for Loader component in form submission."""
+
+    @staticmethod
+    def _make_form_endpoints() -> list[FormEndpoint]:
+        return [
+            FormEndpoint(
+                operation_id="addPet",
+                path="/pet",
+                http_method="post",
+                summary="Add pet",
+                tag="pet",
+                schema_name="Pet",
+                fields=[
+                    ResponseField(name="name", python_type="str"),
+                ],
+                required_fields=["name"],
+                tool_name="Pet_add_pet",
+            ),
+        ]
+
+    def test_loader_in_form(self) -> None:
+        """Form tool must include a Loader component."""
+        code = render_display_module(
+            "pet", [], "pet_api", "PetApi",
+            form_endpoints=self._make_form_endpoints(),
+        )
+        assert "Loader(" in code
+        assert 'variant="dots"' in code
+
+    def test_loader_conditional_on_submitting(self) -> None:
+        """Loader must be wrapped in If(STATE.submitting)."""
+        code = render_display_module(
+            "pet", [], "pet_api", "PetApi",
+            form_endpoints=self._make_form_endpoints(),
+        )
+        assert "If(STATE.submitting)" in code
+        assert "Loader(" in code

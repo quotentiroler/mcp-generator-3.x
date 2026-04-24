@@ -203,3 +203,15 @@ class FormEndpoint:
     fields: list[ResponseField] = field(default_factory=list)
     required_fields: list[str] = field(default_factory=list)
     tool_name: str = ""  # Corresponding MCP tool name e.g. "Pet_add_pet"
+
+
+@dataclass
+class DeleteEndpoint:
+    """A DELETE endpoint for generating delete confirmation dialogs."""
+
+    operation_id: str
+    path: str
+    summary: str
+    tag: str
+    path_params: list[dict[str, Any]]
+    tool_name: str = ""  # Corresponding MCP tool name e.g. "Pet_delete_pet"

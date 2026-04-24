@@ -7,32 +7,16 @@ that render API responses as interactive Prefab UI components.
 
 from __future__ import annotations
 
-from .models import DisplayEndpoint, FormEndpoint, ResponseField
+from .display_helpers import (
+    STATUS_VARIANTS,
+    find_title_field,
+    render_detail_fields,
+    render_detail_tabs,
+    render_expandable_detail,
+    table_columns_for_fields,
+)
+from .models import DeleteEndpoint, DisplayEndpoint, FormEndpoint, ResponseField
 from .utils import camel_to_snake
-
-# ---------------------------------------------------------------------------
-# Badge variant mapping for common status/enum patterns
-# ---------------------------------------------------------------------------
-_STATUS_VARIANTS: dict[str, str] = {
-    "available": "success",
-    "active": "success",
-    "enabled": "success",
-    "approved": "success",
-    "delivered": "success",
-    "complete": "success",
-    "completed": "success",
-    "pending": "warning",
-    "processing": "warning",
-    "in_progress": "warning",
-    "placed": "warning",
-    "sold": "error",
-    "inactive": "error",
-    "disabled": "error",
-    "deleted": "error",
-    "cancelled": "error",
-    "rejected": "error",
-    "failed": "error",
-}
 
 
 def _param_type_hint(param: dict) -> str:
@@ -70,17 +54,6 @@ def _flat_field_key(field: ResponseField) -> str:
     return field.name
 
 
-def _table_columns_for_fields(fields: list[ResponseField]) -> list[dict[str, str]]:
-    """Select which fields to show as table columns (skip deeply nested, arrays)."""
-    columns = []
-    for f in fields:
-        if f.is_array or f.is_nested_object:
-            continue
-        label = f.name.replace("_", " ").title()
-        columns.append({"key": f.name, "label": label})
-    return columns
-
-
 # ---------------------------------------------------------------------------
 # Code generation: detail view
 # ---------------------------------------------------------------------------
@@ -116,10 +89,13 @@ def _render_detail_tool(endpoint: DisplayEndpoint, api_var_name: str) -> str:
     method_name = camel_to_snake(endpoint.operation_id)
 
     # Build field rendering lines
-    field_lines = _render_detail_fields(schema.fields)
+    field_lines = render_detail_fields(schema.fields)
+
+    # Build tabbed sections for nested objects and arrays
+    tab_section = render_detail_tabs(schema.fields)
 
     # Determine a title expression
-    title_field = _find_title_field(schema.fields)
+    title_field = find_title_field(schema.fields)
     if title_field:
         title_expr = (
             f"f\"{schema.schema_name or 'Detail'}: {{result.get('{title_field}', 'Unknown')}}\""
@@ -162,77 +138,13 @@ def {func_name}({params_str}) -> Any:
         with Card():
             with CardContent(css_class="py-4"):
 {field_lines}
+{tab_section}
     return PrefabApp(view=view)
 '''
     return code
 
 
-def _find_title_field(fields: list[ResponseField]) -> str | None:
-    """Find the best field to use as a display title (name, title, username, etc.)."""
-    priority = ["name", "title", "username", "display_name", "label", "email"]
-    field_names = {f.name for f in fields}
-    for candidate in priority:
-        if candidate in field_names:
-            return candidate
-    return None
 
-
-def _render_detail_fields(fields: list[ResponseField], indent: int = 16) -> str:
-    """Generate Prefab code lines for displaying fields in a detail card."""
-    pad = " " * indent
-    lines = []
-    shown = 0
-    for _i, f in enumerate(fields):
-        if f.is_array or f.is_nested_object:
-            continue
-        if shown > 0:
-            lines.append(f"{pad}Separator()")
-
-        lines.append(f'{pad}with Row(gap=4, align="center", css_class="py-2"):')
-        label = f.name.replace("_", " ").title()
-        lines.append(
-            f'{pad}    Text("{label}", css_class="font-medium text-muted-foreground w-40 shrink-0")'
-        )
-
-        if f.is_enum:
-            # Use Badge with variant mapping
-            lines.append(f'{pad}    _val = str(result.get("{f.name}", ""))')
-            lines.append(
-                f'{pad}    Badge(_val, variant=_STATUS_VARIANTS.get(_val.lower(), "outline"))'
-            )
-        elif f.python_type == "bool":
-            lines.append(f'{pad}    _val = result.get("{f.name}", False)')
-            lines.append(
-                f'{pad}    Badge("Yes" if _val else "No", variant="success" if _val else "outline")'
-            )
-        elif f.format in ("date-time", "date"):
-            lines.append(
-                f'{pad}    Text(str(result.get("{f.name}", "")), css_class="font-medium tabular-nums")'
-            )
-        else:
-            lines.append(f'{pad}    Text(str(result.get("{f.name}", "")), css_class="font-medium")')
-        shown += 1
-
-    # Handle nested objects as sub-sections
-    for f in fields:
-        if f.is_nested_object and f.nested_fields:
-            label = f.name.replace("_", " ").title()
-            lines.append(f"{pad}Separator()")
-            lines.append(f'{pad}with Row(gap=4, align="center", css_class="py-2"):')
-            lines.append(
-                f'{pad}    Text("{label}", css_class="font-medium text-muted-foreground w-40 shrink-0")'
-            )
-            # Show nested object's displayable fields inline
-            sub_val = f'result.get("{f.name}", {{}})'
-            for nf in f.nested_fields:
-                if nf.is_array or nf.is_nested_object:
-                    continue
-                lines.append(
-                    f'{pad}    Text(str(({sub_val}).get("{nf.name}", "")), css_class="font-medium")'
-                )
-                break  # Show first field inline
-
-    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -241,7 +153,11 @@ def _render_detail_fields(fields: list[ResponseField], indent: int = 16) -> str:
 
 
 def _render_table_tool(endpoint: DisplayEndpoint, api_var_name: str) -> str:
-    """Generate a display tool that shows an array response as a DataTable."""
+    """Generate a display tool that shows an array response as a DataTable.
+
+    Includes ExpandableRow when the schema has fields beyond the visible columns
+    (nested objects, arrays, or more than 5 flat fields).
+    """
     schema = endpoint.response_schema
     if schema is None:
         return ""
@@ -249,8 +165,6 @@ def _render_table_tool(endpoint: DisplayEndpoint, api_var_name: str) -> str:
     func_name = _tool_name_for_endpoint(endpoint)
     summary = endpoint.summary or f"View {schema.schema_name or 'records'} as table"
 
-    # Build function parameters from query params only (tables are list endpoints)
-    # Tool params keep original OpenAPI names, API kwargs use snake_case.
     params = []
     call_args = []
     for p in endpoint.path_params:
@@ -266,8 +180,7 @@ def _render_table_tool(endpoint: DisplayEndpoint, api_var_name: str) -> str:
     call_args_str = ", ".join(call_args)
     method_name = camel_to_snake(endpoint.operation_id)
 
-    # Build column definitions
-    columns = _table_columns_for_fields(schema.fields)
+    columns = table_columns_for_fields(schema.fields)
     col_lines = []
     for c in columns:
         col_lines.append(
@@ -279,7 +192,33 @@ def _render_table_tool(endpoint: DisplayEndpoint, api_var_name: str) -> str:
     if not heading_text.endswith("s"):
         heading_text += "s"
 
-    code = f'''
+    # Determine if rows should be expandable (has nested/array fields or many flat fields)
+    has_nested = any(f.is_nested_object or f.is_array for f in schema.fields)
+    shown_col_keys = {c["key"] for c in columns}
+    hidden_flat = [f for f in schema.fields if not f.is_array and not f.is_nested_object and f.name not in shown_col_keys]
+    use_expandable = has_nested or len(hidden_flat) > 0
+
+    if use_expandable:
+        # Build the detail component for expanded rows
+        detail_lines = render_expandable_detail(schema.fields, shown_col_keys)
+        rows_code = f'''        _rows = []
+        for _r in results:
+            _rows.append(ExpandableRow(_r, detail=_build_{func_name}_detail(_r)))
+'''
+        detail_helper = f'''
+def _build_{func_name}_detail(row: dict) -> Any:
+    """Build expanded detail view for a table row."""
+    with Column(gap=3, css_class="p-4") as detail:
+{detail_lines}
+    return detail
+'''
+        rows_ref = "_rows"
+    else:
+        rows_code = ""
+        detail_helper = ""
+        rows_ref = "results"
+
+    code = f'''{detail_helper}
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
     tags=["display", "{endpoint.tag}"],
@@ -303,12 +242,13 @@ def {func_name}({params_str}) -> Any:
     if not PREFAB_AVAILABLE:
         return {{"title": "{heading_text}", "count": len(results), "rows": results}}
 
+{rows_code}
     with Column(gap=5, css_class="p-6 max-w-4xl") as view:
         Heading("{heading_text}")
         with Row(gap=2, align="center"):
             Badge(f"{{len(results)}} records", variant="outline")
         DataTable(
-            rows=results,
+            rows={rows_ref},
             columns=[
 {columns_code}
             ],
@@ -395,7 +335,7 @@ def _render_form_tool(form: FormEndpoint) -> str:
     Produces a form with:
     - Loading state (``submitting``) that disables the button during submission
     - ``CallTool`` wrapped in a ``SetState`` action chain
-    - ``ShowToast`` + ``SendMessage`` on success / error
+    - ``ShowToast`` on success / error
     - ``Select`` dropdowns for enum fields
     - Body coercion via the ``data`` key
     """
@@ -466,10 +406,6 @@ def {func_name}() -> Any:
                             on_success=[
                                 SetState(key="submitting", value=False),
                                 ShowToast("Submitted successfully!", variant="success"),
-                                SendMessage(
-                                    content="The form '{summary}' was submitted"
-                                    " successfully. Please show me what was created."
-                                ),
                             ],
                             on_error=[
                                 SetState(key="submitting", value=False),
@@ -480,7 +416,64 @@ def {func_name}() -> Any:
                 ):
                     with Column(gap=4):
 {fields_code}
-                        Button("{submit_label}", css_class="w-full", disabled=STATE.submitting)
+                        with Row(gap=3, align="center"):
+                            Button("{submit_label}", css_class="flex-1", disabled=STATE.submitting)
+                            with If(STATE.submitting):
+                                Loader(variant="dots", size="sm")
+    return PrefabApp(view=view)
+'''
+    return code
+
+
+def _render_delete_tool(delete: DeleteEndpoint) -> str:
+    """Generate a display tool with a Dialog confirmation for a DELETE endpoint.
+
+    Produces a confirmation dialog with:
+    - Warning message
+    - Cancel button (CloseOverlay)
+    - Confirm button (CallTool + ShowToast)
+    """
+    func_name = f"action_delete_{camel_to_snake(delete.operation_id)}"
+    summary = delete.summary or f"Delete {delete.tag}"
+
+    # Build function parameters from path params
+    params = []
+    call_args: dict[str, str] = {}
+    for p in delete.path_params:
+        hint = _param_type_hint(p)
+        params.append(f"{p['name']}: {hint}")
+        call_args[camel_to_snake(p["name"])] = "{{ " + p["name"] + " }}"
+
+    params_str = ", ".join(params)
+    call_args_repr = repr(call_args) if call_args else "{}"
+
+    code = f'''
+@mcp.tool(
+    app=True if PREFAB_AVAILABLE else False,
+    tags=["display", "{delete.tag}"],
+    description="""{summary}""",
+)
+def {func_name}({params_str}) -> Any:
+    """{summary}"""
+    if not PREFAB_AVAILABLE:
+        return {{"action": "delete", "tool": "{delete.tool_name}", "params": {{{", ".join(f'"{p["name"]}": {p["name"]}' for p in delete.path_params)}}}}}
+
+    with Column(gap=5, css_class="p-6 max-w-md") as view:
+        with Dialog(title="Confirm Deletion", description="This action cannot be undone."):
+            Button("{summary}", variant="destructive")
+            with Column(gap=4, css_class="py-2"):
+                Muted("Are you sure you want to proceed? This will permanently delete the resource.")
+                with Row(gap=2, justify="end"):
+                    Button("Cancel", variant="outline", on_click=CloseOverlay())
+                    Button(
+                        "Delete",
+                        variant="destructive",
+                        on_click=[
+                            CallTool("{delete.tool_name}", arguments={call_args_repr}),
+                            CloseOverlay(),
+                            ShowToast("Deleted successfully", variant="success"),
+                        ],
+                    )
     return PrefabApp(view=view)
 '''
     return code
@@ -491,12 +484,78 @@ def {func_name}() -> Any:
 # ---------------------------------------------------------------------------
 
 
+def _build_extra_imports(
+    *,
+    has_forms: bool,
+    has_deletes: bool,
+    has_nested: bool,
+    has_expandable: bool,
+) -> str:
+    """Build extra import block based on which features a module needs."""
+    blocks: list[str] = []
+
+    # Collect components, actions, and mcp-actions needed
+    components: list[str] = []
+    actions: list[str] = []
+    mcp_actions: list[str] = []
+
+    if has_forms:
+        components.extend(["Button", "Form", "If", "Input", "Loader", "Select", "SelectOption"])
+        actions.extend(["SetState", "ShowToast"])
+        mcp_actions.append("CallTool")
+
+    if has_deletes:
+        components.extend(["Button", "Dialog"])
+        actions.append("ShowToast")
+        mcp_actions.append("CallTool")
+
+    if has_nested:
+        components.extend(["Tabs", "Tab"])
+
+    if has_expandable:
+        components.append("ExpandableRow")
+
+    # Pydantic imports (forms only)
+    if has_forms:
+        blocks.append("from typing import Literal")
+        blocks.append("from pydantic import BaseModel, Field")
+
+    # Build the try/except import block
+    import_lines: list[str] = []
+    if components:
+        all_components = sorted(set(components))
+        import_lines.append(
+            f"    from prefab_ui.components import {', '.join(all_components)}"
+        )
+    if actions:
+        import_lines.append(
+            f"    from prefab_ui.actions import {', '.join(sorted(set(actions)))}"
+        )
+    if mcp_actions:
+        import_lines.append(
+            f"    from prefab_ui.actions.mcp import {', '.join(sorted(set(mcp_actions)))}"
+        )
+    if has_deletes:
+        import_lines.append("    from prefab_ui.actions.ui import CloseOverlay")
+
+    if import_lines:
+        blocks.append("try:")
+        blocks.extend(import_lines)
+        blocks.append("except ImportError:")
+        blocks.append("    pass")
+
+    if not blocks:
+        return ""
+    return "\n" + "\n".join(blocks) + "\n"
+
+
 def render_display_module(
     tag: str,
     endpoints: list[DisplayEndpoint],
     api_var_name: str,
     api_class_name: str,
     form_endpoints: list[FormEndpoint] | None = None,
+    delete_endpoints: list[DeleteEndpoint] | None = None,
 ) -> str:
     """Generate a complete display module file for a tag (e.g. pet_display.py).
 
@@ -506,8 +565,29 @@ def render_display_module(
         api_var_name: API variable name (e.g. "pet_api")
         api_class_name: API class name (e.g. "PetApi")
         form_endpoints: Optional POST/PUT endpoints for form generation
+        delete_endpoints: Optional DELETE endpoints for delete confirmation dialogs
     """
     module_name = tag.title().replace("_", "")
+
+    # Determine which enhanced features are needed by scanning endpoints
+    has_nested = False
+    has_expandable = False
+    for ep in endpoints:
+        schema = ep.response_schema
+        if schema is None:
+            continue
+        nested = [f for f in schema.fields if f.is_nested_object or f.is_array]
+        if nested and schema.is_object:
+            has_nested = True
+        if schema.is_array:
+            shown_cols = {c["key"] for c in table_columns_for_fields(schema.fields)}
+            extra = any(
+                (f.is_nested_object or f.is_array) or
+                (not f.is_array and not f.is_nested_object and f.name not in shown_cols)
+                for f in schema.fields
+            )
+            if extra:
+                has_expandable = True
 
     tool_code_blocks = []
     for ep in endpoints:
@@ -531,27 +611,30 @@ def render_display_module(
                 form_tool_blocks.append(_render_form_tool(fe))
                 has_forms = True
 
-    if not tool_code_blocks and not form_tool_blocks:
+    # Generate delete confirmation tools
+    delete_tool_blocks = []
+    has_deletes = False
+    if delete_endpoints:
+        for de in delete_endpoints:
+            delete_tool_blocks.append(_render_delete_tool(de))
+            has_deletes = True
+
+    if not tool_code_blocks and not form_tool_blocks and not delete_tool_blocks:
         return ""
 
     tools_code = "\n".join(tool_code_blocks)
     models_code = "\n".join(model_code_blocks)
     forms_code = "\n".join(form_tool_blocks)
-    variants_repr = repr(_STATUS_VARIANTS)
+    deletes_code = "\n".join(delete_tool_blocks)
+    variants_repr = repr(STATUS_VARIANTS)
 
-    # Extra imports needed for form generation
-    form_imports = ""
-    if has_forms:
-        form_imports = """
-from typing import Literal
-from pydantic import BaseModel, Field
-try:
-    from prefab_ui.components import Button, Form, Input, Select, SelectOption
-    from prefab_ui.actions import SetState, ShowToast
-    from prefab_ui.actions.mcp import CallTool, SendMessage
-except ImportError:
-    pass
-"""
+    # Build extra imports based on which features are used
+    extra_imports = _build_extra_imports(
+        has_forms=has_forms,
+        has_deletes=has_deletes,
+        has_nested=has_nested,
+        has_expandable=has_expandable,
+    )
 
     header = f'''"""
 {module_name} Display Tools — API-specific UI views.
@@ -600,7 +683,7 @@ try:
     PREFAB_AVAILABLE = True
 except ImportError:
     PREFAB_AVAILABLE = False
-{form_imports}
+{extra_imports}
 # Badge variant mapping for status / enum values
 _STATUS_VARIANTS = {variants_repr}
 
@@ -640,7 +723,7 @@ def _get_api():
 # ============================================================================
 """
 
-    # Assemble: header + helper + init + models + display tools + form tools
+    # Assemble: header + helper + init + models + display tools + form tools + delete tools
     parts = [header, helper, init_code]
     if models_code:
         parts.append(
@@ -653,4 +736,9 @@ def _get_api():
             "\n# ============================================================================\n# Form tools (auto-generated from request body schemas)\n# ============================================================================\n"
         )
         parts.append(forms_code)
+    if deletes_code:
+        parts.append(
+            "\n# ============================================================================\n# Delete confirmation tools\n# ============================================================================\n"
+        )
+        parts.append(deletes_code)
     return "\n".join(parts) + "\n"

@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 try:
     from prefab_ui.actions import SetState, ShowToast
-    from prefab_ui.actions.mcp import CallTool, SendMessage
+    from prefab_ui.actions.mcp import CallTool
     from prefab_ui.app import PrefabApp
     from prefab_ui.components import (
         Badge,
@@ -289,10 +289,6 @@ def show_form(
                             on_success=[
                                 SetState(key="submitting", value=False),
                                 ShowToast("Submitted successfully!", variant="success"),
-                                SendMessage(
-                                    content=f"The form '{title}' was submitted successfully."
-                                    " Please show me what was created."
-                                ),
                             ],
                             on_error=[
                                 SetState(key="submitting", value=False),

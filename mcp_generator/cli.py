@@ -411,30 +411,38 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
             else:
                 print("\n🖼️  Generating API-specific display tools from response schemas...")
                 from .display_renderers import render_display_module
-                from .introspection import get_display_endpoints, get_form_endpoints
+                from .introspection import get_delete_endpoints, get_display_endpoints, get_form_endpoints
                 from .writers import write_display_modules
 
                 display_endpoints = get_display_endpoints(src_dir)
                 form_endpoints = get_form_endpoints(src_dir)
+                delete_endpoints = get_delete_endpoints(src_dir)
                 display_modules = {}
                 for tag, endpoints in display_endpoints.items():
                     api_var = f"{tag}_api"
                     api_class_name = tag.title().replace("_", "") + "Api"
                     tag_forms = form_endpoints.get(tag, [])
+                    tag_deletes = delete_endpoints.get(tag, [])
                     code = render_display_module(
                         tag,
                         endpoints,
                         api_var,
                         api_class_name,
                         form_endpoints=tag_forms,
+                        delete_endpoints=tag_deletes,
                     )
                     if code:
                         display_modules[tag] = code
                         display_module_count = len(display_modules)
 
-                # Also generate form-only modules for tags that have forms but no display endpoints
-                for tag, forms in form_endpoints.items():
-                    if tag not in display_modules and forms:
+                # Also generate modules for tags with forms/deletes but no display endpoints
+                all_tags = set(form_endpoints.keys()) | set(delete_endpoints.keys())
+                for tag in all_tags:
+                    if tag not in display_modules:
+                        forms = form_endpoints.get(tag, [])
+                        deletes = delete_endpoints.get(tag, [])
+                        if not forms and not deletes:
+                            continue
                         api_var = f"{tag}_api"
                         api_class_name = tag.title().replace("_", "") + "Api"
                         code = render_display_module(
@@ -443,6 +451,7 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                             api_var,
                             api_class_name,
                             form_endpoints=forms,
+                            delete_endpoints=deletes,
                         )
                         if code:
                             display_modules[tag] = code
