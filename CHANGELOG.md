@@ -13,6 +13,13 @@
 **Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/76
 
 
+
+- ✨ Features: Upgrade to FastMCP 3.2.4 — Keycloak auth, elicit fix, RFC 8707
+- 🔧 Chores & Improvements: Internal build/metadata cleanup (auto)
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/79
+
+
 ## [3.2.3]P26-04-23
 
 ### Changed
