@@ -6,6 +6,18 @@
 
 - Dependencies updated
 
+
+- 🔧 Chores & Improvements: CI/CD cleanup to push directly to staging; merge and sync processes streamlined; update version metadata and CHANGELOG automation
+- 📚 Documentation: CHANGELOG updates for PRs #76, #79
+- ⚠️ Breaking Changes: None
+- ✨ Features: Auto-refresh UI enhancements (ToggleState, SetInterval), new dialog UI components (Dialog, Tabs, ExpandableRow, Loader, If), enhanced form tools with loading state and coercion
+- 🐛 Bug Fixes: Display fixes (resource identifier in delete dialog, proper auto-refresh behavior, indentation fixes, 404/null-safe fixes), SendMessage prompts adjustment, escaping/backslash handling in SendMessage
+- 🔧 Chores & Improvements: Code style and lint fixes (ruff), internal cleanup across display module
+- 📚 Documentation: CHANGELOG generation updates
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/80
+
+
 ## [3.2.3]P26-04-23
 
 ### Changed
