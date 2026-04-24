@@ -265,7 +265,14 @@ def {func_name}({params_str}) -> Any:
     with Column(gap=5, css_class="p-6 max-w-4xl") as view:
         with Row(gap=3, align="center", justify="between"):
             Heading("{heading_text}")
-            with If(STATE.auto_refresh, invert=True):
+            with If(STATE.auto_refresh):
+                Button(
+                    "Stop",
+                    variant="destructive",
+                    size="sm",
+                    on_click=ToggleState("auto_refresh"),
+                )
+            with Else():
                 Button(
                     "Auto-refresh",
                     variant="outline",
@@ -278,13 +285,6 @@ def {func_name}({params_str}) -> Any:
                             while_=STATE.auto_refresh,
                         ),
                     ],
-                )
-            with Else():
-                Button(
-                    "Stop",
-                    variant="destructive",
-                    size="sm",
-                    on_click=ToggleState("auto_refresh"),
                 )
         with Row(gap=2, align="center"):
             Badge(f"{{len(results)}} records", variant="outline")
