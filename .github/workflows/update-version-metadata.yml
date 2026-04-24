@@ -16,7 +16,10 @@ concurrency:
 jobs:
   update-metadata:
     # Skip if this commit was made by the bot itself (prevent infinite loop)
-    if: "!contains(github.event.head_commit.message, '[automated]')"
+    # Skip if commit is a release bump (stable version, no pre-release suffix)
+    if: |
+      !contains(github.event.head_commit.message, '[automated]') &&
+      !startsWith(github.event.head_commit.message, 'release:')
     name: Update Version with Commit Hash
     runs-on: ubuntu-latest
     permissions:

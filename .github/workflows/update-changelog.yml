@@ -11,7 +11,10 @@ on:
 jobs:
   update-changelog:
     # Only run if PR was actually merged (not just closed)
-    if: github.event.pull_request.merged == true
+    # Skip if the PR title contains 'release:' to avoid conflicts with promote workflow
+    if: |
+      github.event.pull_request.merged == true &&
+      !startsWith(github.event.pull_request.title, 'Release:')
     name: Generate and Update Changelog
     runs-on: ubuntu-latest
     permissions:
