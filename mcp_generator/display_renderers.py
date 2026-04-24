@@ -262,23 +262,30 @@ def {func_name}({params_str}) -> Any:
         return {{"title": "{heading_text}", "count": len(results), "rows": results}}
 
 {rows_code}
-    with Column(gap=5, css_class="p-6 max-w-4xl", let={{"auto_refresh": False}}) as view:
+    with Column(gap=5, css_class="p-6 max-w-4xl") as view:
         with Row(gap=3, align="center", justify="between"):
             Heading("{heading_text}")
-            Button(
-                "Auto-refresh",
-                variant="outline",
-                size="sm",
-                on_click=[
-                    SetState(key="auto_refresh", value=True),
-                    SetInterval(
-                        30000,
-                        on_tick=CallTool("{func_name}"{call_tool_args}),
-                        while_=STATE.auto_refresh,
-                    ),
-                ],
-                disabled=STATE.auto_refresh,
-            )
+            with If(STATE.auto_refresh, invert=True):
+                Button(
+                    "Auto-refresh",
+                    variant="outline",
+                    size="sm",
+                    on_click=[
+                        ToggleState("auto_refresh"),
+                        SetInterval(
+                            30000,
+                            on_tick=CallTool("{func_name}"{call_tool_args}),
+                            while_=STATE.auto_refresh,
+                        ),
+                    ],
+                )
+            with Else():
+                Button(
+                    "Stop",
+                    variant="destructive",
+                    size="sm",
+                    on_click=ToggleState("auto_refresh"),
+                )
         with Row(gap=2, align="center"):
             Badge(f"{{len(results)}} records", variant="outline")
             with If(STATE.auto_refresh):
@@ -290,7 +297,7 @@ def {func_name}({params_str}) -> Any:
             ],
             search=True,
         )
-    return PrefabApp(view=view)
+    return PrefabApp(view=view, state={{"auto_refresh": False}})
 '''
     return code
 
@@ -559,8 +566,8 @@ def _build_extra_imports(
         components.append("ExpandableRow")
 
     if has_tables:
-        components.extend(["Button", "If"])
-        actions.extend(["SetInterval", "SetState"])
+        components.extend(["Button", "If", "Else"])
+        actions.extend(["SetInterval", "ToggleState"])
         mcp_actions.append("CallTool")
 
     # Pydantic imports (forms only)

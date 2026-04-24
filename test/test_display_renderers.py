@@ -1266,6 +1266,26 @@ class TestSetIntervalAutoRefresh:
         code = render_display_module("pet", self._make_table_endpoints(), "pet_api", "PetApi")
         assert '"auto_refresh": False' in code
 
+    def test_toggle_button_uses_toggle_state(self) -> None:
+        """Auto-refresh button must use ToggleState for toggle behaviour."""
+        code = render_display_module("pet", self._make_table_endpoints(), "pet_api", "PetApi")
+        assert "ToggleState" in code
+
+    def test_stop_button_exists(self) -> None:
+        """A Stop button must appear when auto_refresh is active (via Else)."""
+        code = render_display_module("pet", self._make_table_endpoints(), "pet_api", "PetApi")
+        assert '"Stop"' in code
+
+    def test_else_used_for_toggle(self) -> None:
+        """If/Else must be used to swap between Auto-refresh and Stop buttons."""
+        code = render_display_module("pet", self._make_table_endpoints(), "pet_api", "PetApi")
+        assert "Else()" in code
+
+    def test_auto_refresh_state_on_prefab_app(self) -> None:
+        """State must be set on PrefabApp(state=...) not let={} for persistence."""
+        code = render_display_module("pet", self._make_table_endpoints(), "pet_api", "PetApi")
+        assert 'PrefabApp(view=view, state={"auto_refresh": False})' in code
+
 
 # ===========================================================================
 # Test: ExpandableRow in tables
