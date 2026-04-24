@@ -118,6 +118,7 @@ Examples:
 
   # Enrich descriptions with an overlay or auto-enhance
   generate-mcp --overlay ./my-overlay.yaml
+  generate-mcp --overlay fhir --schema-depth 5
   generate-mcp --auto-overlay
 
   # Generate A2A agent adapter
@@ -197,7 +198,7 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         "--overlay",
         type=str,
         default=None,
-        help="Path to an OpenAPI Overlay 1.0.0 file to enrich descriptions before generation",
+        help="Overlay name or path. Bundled: 'fhir'. Or a path to an Overlay 1.0.0 file",
     )
 
     parser.add_argument(
@@ -283,7 +284,7 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         import json as _json_overlay
 
         from .introspection import _load_openapi_spec
-        from .overlay import apply_overlay, generate_overlay, load_overlay
+        from .overlay import apply_overlay, generate_overlay, load_overlay, resolve_overlay_path
 
         raw_spec = _load_openapi_spec(openapi_spec)
         if raw_spec is None:
@@ -293,8 +294,9 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         spec_copy = copy.deepcopy(raw_spec)
 
         if args.overlay:
-            print(f"\n📝 Applying OpenAPI Overlay: {args.overlay}")
-            overlay_doc = load_overlay(Path(args.overlay))
+            overlay_path = resolve_overlay_path(args.overlay)
+            print(f"\n📝 Applying OpenAPI Overlay: {overlay_path}")
+            overlay_doc = load_overlay(overlay_path)
             apply_overlay(spec_copy, overlay_doc)
             action_count = len(overlay_doc.get("actions", []))
             print(f"   ✅ Applied {action_count} overlay actions")
