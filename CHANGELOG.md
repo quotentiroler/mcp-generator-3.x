@@ -18,6 +18,27 @@
 **Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/80
 
 
+
+- ✨ Features
+  - Display: auto-refresh toggle with persistent state using ToggleState; add SetInterval auto-refresh to table views; include loading state, Submit button behavior, and dynamic result display in SendMessage
+
+- 🐛 Bug Fixes
+  - Display: various UI fixes (dialog components, truncation, table indentation, null-safe handling)
+  - Display: fix delete confirmation to show resource identifier; proper escaping in SendMessage prompts
+
+- 🔧 Chores & Improvements
+  - CI/CD: skip changelog/metadata workflows on release commits; automate version metadata updates and staging promotions
+  - Chore: synchronize main into staging; merge develop into staging improvements
+  - Docs: automated CHANGELOG updates
+
+- ⚠️ Breaking Changes
+  - None identified
+
+Note: Removed update/merge/metadata-only commits per guidance.
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/82
+
+
 ## [3.2.3]P26-04-23
 
 ### Changed
