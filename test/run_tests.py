@@ -1,5 +1,5 @@
 """
-Test runner for Swagger Petstore
+Test runner for Swagger Petstore - OpenAPI 3.0
 
 This script:
 1. Starts the MCP server in HTTP mode
@@ -63,7 +63,7 @@ def wait_for_server(url: str, timeout: int = 30) -> bool:
     return False
 
 
-def run_tests(test_filter: str | None = None) -> int:
+def run_tests(test_filter: str | None = None):
     """Run the MCP server and execute tests.
 
     Args:
@@ -75,7 +75,7 @@ def run_tests(test_filter: str | None = None) -> int:
     test_dir = project_root / "test" / "generated"
 
     # Server configuration
-    server_script = generated_mcp_dir / "swagger_petstore_mcp_generated.py"
+    server_script = generated_mcp_dir / "swagger_petstore_openapi_mcp_generated.py"
     server_url = os.getenv("MCP_SERVER_URL", "http://localhost:8000/mcp")
     server_port = os.getenv("MCP_SERVER_PORT", "8000")
 
@@ -98,9 +98,9 @@ def run_tests(test_filter: str | None = None) -> int:
 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        port_check = sock.connect_ex(("localhost", int(server_port)))
+        result = sock.connect_ex(("localhost", int(server_port)))
         sock.close()
-        if port_check == 0:
+        if result == 0:
             print(f"⚠️  Port {server_port} is already in use. Attempting to free it...")
             if sys.platform == "win32":
                 # On Windows, try to find and kill the process using the port
@@ -191,12 +191,11 @@ def run_tests(test_filter: str | None = None) -> int:
     import queue
     import threading
 
-    output_queue: queue.Queue[str] = queue.Queue()
+    output_queue = queue.Queue()
 
-    def consume_output() -> None:
+    def consume_output():
         """Consume server output in background to prevent pipe blocking."""
         try:
-            assert server_process.stdout is not None
             for line in iter(server_process.stdout.readline, ""):
                 if line:
                     output_queue.put(line.strip())
@@ -326,12 +325,12 @@ def run_tests(test_filter: str | None = None) -> int:
                 pass  # Best effort cleanup
 
 
-def main() -> int:
+def main():
     """Main entry point."""
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Test runner for Swagger Petstore",
+        description="Test runner for Swagger Petstore - OpenAPI 3.0",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -346,7 +345,7 @@ def main() -> int:
     print("""
 +--------------------------------------------------------------+
 |          MCP Server Test Runner                              |
-|          Swagger Petstore                                        |
+|          Swagger Petstore - OpenAPI 3.0                          |
 +--------------------------------------------------------------+
 """)
 

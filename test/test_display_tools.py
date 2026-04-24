@@ -361,8 +361,17 @@ class TestShowFormPrefab:
         inputs = [c for c in inner_col.children if type(c).__name__ == "Input"]
         return form, inputs
 
+    def _get_calltool(self, form: Any) -> Any:
+        """Extract the CallTool action from form.on_submit (may be a list)."""
+        from prefab_ui.actions.mcp import CallTool
+
+        actions = form.on_submit
+        if isinstance(actions, list):
+            return next(a for a in actions if isinstance(a, CallTool))
+        return actions
+
     def test_calltool_arguments_bind_field_values(self) -> None:
-        """CallTool must map each field name to a '{{ name }}' template variable."""
+        """CallTool must wrap field bindings under a 'data' key."""
         mod = _load_display_tools()
         result = mod.show_form(
             title="New Pet",
@@ -373,14 +382,15 @@ class TestShowFormPrefab:
             submit_tool="add_pet",
         )
         form, _inputs = self._get_form_and_inputs(result)
-        calltool = form.on_submit
+        calltool = self._get_calltool(form)
         assert calltool.tool == "add_pet"
-        assert calltool.arguments, "CallTool arguments must not be empty"
-        assert calltool.arguments["name"] == "{{ name }}"
-        assert calltool.arguments["status"] == "{{ status }}"
+        assert "data" in calltool.arguments, "CallTool arguments must contain 'data' key"
+        data = calltool.arguments["data"]
+        assert data["name"] == "{{ name }}"
+        assert data["status"] == "{{ status }}"
 
     def test_calltool_arguments_match_all_fields(self) -> None:
-        """Every field in the form must have a corresponding argument binding."""
+        """Every field in the form must have a corresponding binding inside data."""
         mod = _load_display_tools()
         fields = [
             {"name": "pet_name", "label": "Name"},
@@ -394,15 +404,14 @@ class TestShowFormPrefab:
             submit_tool="register_pet",
         )
         form, _inputs = self._get_form_and_inputs(result)
-        calltool = form.on_submit
+        calltool = self._get_calltool(form)
+        data = calltool.arguments["data"]
         for f in fields:
-            assert f["name"] in calltool.arguments, (
-                f"Field '{f['name']}' missing from CallTool arguments"
-            )
-            assert calltool.arguments[f["name"]] == f"{{{{ {f['name']} }}}}"
+            assert f["name"] in data, f"Field '{f['name']}' missing from CallTool data payload"
+            assert data[f["name"]] == f"{{{{ {f['name']} }}}}"
 
     def test_calltool_has_no_extra_arguments(self) -> None:
-        """CallTool arguments should only contain the form fields, nothing extra."""
+        """CallTool arguments should only contain the 'data' key."""
         mod = _load_display_tools()
         fields = [{"name": "title", "label": "Title"}]
         result = mod.show_form(
@@ -411,8 +420,9 @@ class TestShowFormPrefab:
             submit_tool="create_item",
         )
         form, _inputs = self._get_form_and_inputs(result)
-        calltool = form.on_submit
-        assert set(calltool.arguments.keys()) == {"title"}
+        calltool = self._get_calltool(form)
+        assert set(calltool.arguments.keys()) == {"data"}
+        assert set(calltool.arguments["data"].keys()) == {"title"}
 
     # --- Bug fix: Input must respect field type ---
 

@@ -12,6 +12,7 @@ from typing import Any
 
 from .models import (
     ApiMetadata,
+    DeleteEndpoint,
     DisplayEndpoint,
     FormEndpoint,
     OAuthConfig,
@@ -825,3 +826,177 @@ def get_form_endpoints(base_dir: Path | None = None) -> dict[str, list[FormEndpo
             forms_by_tag[primary_tag].append(endpoint)
 
     return forms_by_tag
+
+
+def get_delete_endpoints(base_dir: Path | None = None) -> dict[str, list[DeleteEndpoint]]:
+    """Extract DELETE endpoints for generating delete confirmation dialogs.
+
+    Returns:
+        Dictionary mapping tag names to lists of DeleteEndpoint.
+    """
+    if base_dir is None:
+        base_dir = Path.cwd()
+
+    openapi_path = _find_openapi_spec(base_dir)
+    if not openapi_path or not openapi_path.exists():
+        return {}
+
+    spec = _load_openapi_spec(openapi_path)
+    if not spec or "paths" not in spec:
+        return {}
+
+    enrich_spec_tags(spec)
+    deletes_by_tag: dict[str, list[DeleteEndpoint]] = {}
+
+    for path, path_item in spec.get("paths", {}).items():
+        if "delete" not in path_item:
+            continue
+
+        op = path_item["delete"]
+        operation_id = op.get("operationId")
+        if not operation_id:
+            continue
+
+        tags = op.get("tags", ["default"])
+        primary_tag = tags[0] if tags else "default"
+
+        # Collect path parameters (DELETE typically needs an ID)
+        path_params: list[dict[str, Any]] = []
+        all_params = list(path_item.get("parameters", []))
+        for op_param in op.get("parameters", []):
+            all_params.append(op_param)
+        seen: set[str] = set()
+        for param in reversed(all_params):
+            if "$ref" in param:
+                param = _resolve_ref(spec, param["$ref"])
+            name = param.get("name")
+            p_in = param.get("in")
+            if name and name not in seen and p_in == "path":
+                seen.add(name)
+                path_params.append(
+                    {
+                        "name": name,
+                        "schema": param.get("schema", {}),
+                        "required": True,
+                    }
+                )
+
+        # Build MCP tool name: {Tag}_{snake_case_op} matching namespace mount
+        snake_op = camel_to_snake(operation_id)
+        tool_name = f"{primary_tag.title()}_{snake_op}"
+
+        endpoint = DeleteEndpoint(
+            operation_id=operation_id,
+            path=path,
+            summary=op.get("summary", ""),
+            tag=primary_tag,
+            path_params=path_params,
+            tool_name=tool_name,
+        )
+
+        if primary_tag not in deletes_by_tag:
+            deletes_by_tag[primary_tag] = []
+        deletes_by_tag[primary_tag].append(endpoint)
+
+    return deletes_by_tag
+
+
+# ---------------------------------------------------------------------------
+# Phase 4: Body schema extraction for form data coercion
+# ---------------------------------------------------------------------------
+
+
+def _fields_to_coercion_schema(fields: list[ResponseField]) -> dict[str, Any]:
+    """Convert ResponseField list into a simplified schema dict for code generation.
+
+    The returned dict maps field names to type descriptors that the runtime
+    ``_coerce_form_data`` function uses to reshape flat form values into the
+    structure the API expects.
+
+    Example output for the Petstore ``Pet`` schema::
+
+        {
+            "id": {"type": "integer"},
+            "name": {"type": "string"},
+            "category": {
+                "type": "object",
+                "properties": {"id": {"type": "integer"}, "name": {"type": "string"}},
+            },
+            "photoUrls": {"type": "array", "items": {"type": "string"}},
+            "tags": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {"id": {"type": "integer"}, "name": {"type": "string"}},
+                },
+            },
+            "status": {"type": "string", "enum": ["available", "pending", "sold"]},
+        }
+    """
+    _PYTHON_TO_JSON_TYPE = {"str": "string", "int": "integer", "float": "number", "bool": "boolean"}
+    schema: dict[str, Any] = {}
+    for f in fields:
+        if f.is_array:
+            item_desc: dict[str, Any]
+            if f.nested_fields:
+                item_desc = {
+                    "type": "object",
+                    "properties": _fields_to_coercion_schema(f.nested_fields),
+                }
+            else:
+                item_desc = {"type": _PYTHON_TO_JSON_TYPE.get(f.python_type, "string")}
+            schema[f.name] = {"type": "array", "items": item_desc}
+        elif f.is_nested_object and f.nested_fields:
+            schema[f.name] = {
+                "type": "object",
+                "properties": _fields_to_coercion_schema(f.nested_fields),
+            }
+        else:
+            entry: dict[str, Any] = {"type": _PYTHON_TO_JSON_TYPE.get(f.python_type, "string")}
+            if f.is_enum and f.enum_values:
+                entry["enum"] = f.enum_values
+            schema[f.name] = entry
+    return schema
+
+
+def get_body_schemas(base_dir: Path | None = None) -> dict[str, dict[str, Any]]:
+    """Extract request body schemas for POST/PUT operations.
+
+    Returns a dictionary mapping ``snake_case_method_name`` → simplified body
+    schema dict.  The schema is consumed at code-generation time and embedded
+    as a literal in the generated server module so that the runtime
+    ``_coerce_form_data`` helper can reshape flat form data into the nested
+    structure the API expects.
+    """
+    if base_dir is None:
+        base_dir = Path.cwd()
+
+    openapi_path = _find_openapi_spec(base_dir)
+    if not openapi_path or not openapi_path.exists():
+        return {}
+
+    spec = _load_openapi_spec(openapi_path)
+    if not spec or "paths" not in spec:
+        return {}
+
+    schemas: dict[str, dict[str, Any]] = {}
+    for _path, path_item in spec.get("paths", {}).items():
+        for method in ("post", "put", "patch"):
+            if method not in path_item:
+                continue
+            op = path_item[method]
+            operation_id = op.get("operationId")
+            if not operation_id:
+                continue
+
+            result = _extract_request_body_schema(op, spec)
+            if result is None:
+                continue
+
+            _schema_name, fields, _required = result
+            # Key by snake_case method name — matches the method name used
+            # by _build_tool_spec → sanitize_name → tool_name
+            method_name = camel_to_snake(operation_id)
+            schemas[method_name] = _fields_to_coercion_schema(fields)
+
+    return schemas

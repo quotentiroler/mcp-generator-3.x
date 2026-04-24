@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # Conditional Prefab imports — graceful fallback when prefab-ui is not installed
 # ---------------------------------------------------------------------------
 try:
-    from prefab_ui.actions import ShowToast
+    from prefab_ui.actions import SetState, ShowToast
     from prefab_ui.actions.mcp import CallTool
     from prefab_ui.app import PrefabApp
     from prefab_ui.components import (
@@ -42,6 +42,8 @@ try:
         Muted,
         Progress,
         Row,
+        Select,
+        SelectOption,
         Separator,
         Small,
         Text,
@@ -252,15 +254,24 @@ def show_form(
 
     Args:
         title: Form heading.
-        fields: Input field definitions, each with 'name', 'label', and optional 'required' (bool),
-                'type' ('text', 'number', 'email'), 'placeholder'.
-                Example: [{"name": "email", "label": "Email", "required": true, "type": "email"}]
+        fields: Input field definitions, each with 'name', 'label', and optional:
+                'required' (bool), 'type' ('text','number','email','select'),
+                'placeholder', 'options' (list of strings — required when type is 'select').
+                Example: [{"name": "email", "label": "Email", "required": true, "type": "email"},
+                          {"name": "status", "label": "Status", "type": "select",
+                           "options": ["available", "pending", "sold"]}]
         submit_tool: Name of the MCP tool to call on form submission.
         submit_label: Button text (default: 'Submit').
         subtitle: Optional description shown below the heading.
     """
     if not PREFAB_AVAILABLE:
         return {"title": title, "fields": fields, "submit_tool": submit_tool}
+
+    from prefab_ui.rx import STATE
+
+    # Wrap all form field values into a single 'data' dict so generated
+    # tools receive them via their ``data: dict`` parameter.
+    _data_payload = {f["name"]: "{{ " + f["name"] + " }}" for f in fields}
 
     with Column(gap=5, css_class="p-6 max-w-2xl") as view:
         Heading(title)
@@ -269,23 +280,50 @@ def show_form(
         with Card():
             with CardContent(css_class="py-4"):
                 with Form(
-                    on_submit=CallTool(
-                        submit_tool,
-                        arguments={f["name"]: "{{ " + f["name"] + " }}" for f in fields},
-                        on_success=ShowToast("Success!", variant="success"),
-                        on_error=ShowToast("Something went wrong", variant="error"),
-                    )
+                    let={"submitting": False},
+                    on_submit=[
+                        SetState(key="submitting", value=True),
+                        CallTool(
+                            submit_tool,
+                            arguments={"data": _data_payload},
+                            on_success=[
+                                SetState(key="submitting", value=False),
+                                ShowToast("Submitted successfully!", variant="success"),
+                            ],
+                            on_error=[
+                                SetState(key="submitting", value=False),
+                                ShowToast("Something went wrong", variant="error"),
+                            ],
+                        ),
+                    ],
                 ):
                     with Column(gap=4):
                         for f in fields:
-                            Input(
-                                name=f["name"],
-                                label=f.get("label", f["name"]),
-                                input_type=f.get("type", "text"),
-                                required=f.get("required", False),
-                                placeholder=f.get("placeholder", ""),
-                            )
-                        Button(submit_label, css_class="w-full")
+                            field_type = f.get("type", "text")
+                            if field_type == "select" and f.get("options"):
+                                with Select(
+                                    name=f["name"],
+                                    placeholder=f.get("placeholder", f.get("label", f["name"])),
+                                    required=f.get("required", False),
+                                ):
+                                    for opt in f["options"]:
+                                        SelectOption(
+                                            label=opt
+                                            if isinstance(opt, str)
+                                            else opt.get("label", ""),
+                                            value=opt
+                                            if isinstance(opt, str)
+                                            else opt.get("value", ""),
+                                        )
+                            else:
+                                Input(
+                                    name=f["name"],
+                                    label=f.get("label", f["name"]),
+                                    input_type=field_type,
+                                    required=f.get("required", False),
+                                    placeholder=f.get("placeholder", ""),
+                                )
+                        Button(submit_label, css_class="w-full", disabled=STATE.submitting)
 
     return PrefabApp(view=view)
 

@@ -307,38 +307,37 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         openapi_spec = enhanced_spec_path
         print(f"   📄 Enhanced spec: {enhanced_spec_path.name}")
 
-    # Ensure API client exists before trying to introspect it
+    # Always (re-)generate the API client so method bodies stay in sync
+    # with the current openapi-py-fetch runtime.
     generated_dir = src_dir / "generated_openapi"
-    openapi_client_dir = generated_dir / "openapi_client"
+    _openapi_client_dir = generated_dir / "openapi_client"
 
-    if not (openapi_client_dir.exists() and (openapi_client_dir / "__init__.py").exists()):
-        print("\n🔨 Generating Python API client from OpenAPI specification...")
-        print("   This is a one-time step that may take a few moments.")
+    print("\n🔨 Generating Python API client from OpenAPI specification...")
 
-        try:
-            import json as _json
+    try:
+        import json as _json
 
-            with open(openapi_spec, encoding="utf-8") as _f:
-                spec = _json.load(_f)
+        with open(openapi_spec, encoding="utf-8") as _f:
+            spec = _json.load(_f)
 
-            from openapi_py_fetch.generator import generate_client_package
+        from openapi_py_fetch.generator import generate_client_package
 
-            from .introspection import enrich_spec_tags
+        from .introspection import enrich_spec_tags
 
-            generated_dir.mkdir(parents=True, exist_ok=True)
-            ok = generate_client_package(spec, generated_dir, enrich_tags_fn=enrich_spec_tags)
-            if not ok:
-                print("\n❌ API Client Generation Failed")
-                print("\n💡 Verify your openapi.json is valid:")
-                print("      python -m mcp_generator.scripts.validate_openapi")
-                sys.exit(1)
-
-            print("   ✅ API client generated successfully")
-        except Exception as e:
-            print(f"\n❌ Error generating API client: {e}")
+        generated_dir.mkdir(parents=True, exist_ok=True)
+        ok = generate_client_package(spec, generated_dir, enrich_tags_fn=enrich_spec_tags)
+        if not ok:
+            print("\n❌ API Client Generation Failed")
             print("\n💡 Verify your openapi.json is valid:")
             print("      python -m mcp_generator.scripts.validate_openapi")
             sys.exit(1)
+
+        print("   ✅ API client generated successfully")
+    except Exception as e:
+        print(f"\n❌ Error generating API client: {e}")
+        print("\n💡 Verify your openapi.json is valid:")
+        print("      python -m mcp_generator.scripts.validate_openapi")
+        sys.exit(1)
 
     try:
         # Generate all components
@@ -412,30 +411,42 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
             else:
                 print("\n🖼️  Generating API-specific display tools from response schemas...")
                 from .display_renderers import render_display_module
-                from .introspection import get_display_endpoints, get_form_endpoints
+                from .introspection import (
+                    get_delete_endpoints,
+                    get_display_endpoints,
+                    get_form_endpoints,
+                )
                 from .writers import write_display_modules
 
                 display_endpoints = get_display_endpoints(src_dir)
                 form_endpoints = get_form_endpoints(src_dir)
+                delete_endpoints = get_delete_endpoints(src_dir)
                 display_modules = {}
                 for tag, endpoints in display_endpoints.items():
                     api_var = f"{tag}_api"
                     api_class_name = tag.title().replace("_", "") + "Api"
                     tag_forms = form_endpoints.get(tag, [])
+                    tag_deletes = delete_endpoints.get(tag, [])
                     code = render_display_module(
                         tag,
                         endpoints,
                         api_var,
                         api_class_name,
                         form_endpoints=tag_forms,
+                        delete_endpoints=tag_deletes,
                     )
                     if code:
                         display_modules[tag] = code
                         display_module_count = len(display_modules)
 
-                # Also generate form-only modules for tags that have forms but no display endpoints
-                for tag, forms in form_endpoints.items():
-                    if tag not in display_modules and forms:
+                # Also generate modules for tags with forms/deletes but no display endpoints
+                all_tags = set(form_endpoints.keys()) | set(delete_endpoints.keys())
+                for tag in all_tags:
+                    if tag not in display_modules:
+                        forms = form_endpoints.get(tag, [])
+                        deletes = delete_endpoints.get(tag, [])
+                        if not forms and not deletes:
+                            continue
                         api_var = f"{tag}_api"
                         api_class_name = tag.title().replace("_", "") + "Api"
                         code = render_display_module(
@@ -444,6 +455,7 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                             api_var,
                             api_class_name,
                             form_endpoints=forms,
+                            delete_endpoints=deletes,
                         )
                         if code:
                             display_modules[tag] = code

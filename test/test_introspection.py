@@ -1,8 +1,15 @@
 """Tests for mcp_generator.introspection — tag auto-discovery and spec loading."""
 
 import copy
+import json
+from pathlib import Path
 
-from mcp_generator.introspection import enrich_spec_tags
+from mcp_generator.introspection import (
+    _fields_to_coercion_schema,
+    enrich_spec_tags,
+    get_body_schemas,
+)
+from mcp_generator.models import ResponseField
 from test.conftest import MINIMAL_OPENAPI_SPEC
 
 # ---------------------------------------------------------------------------
@@ -96,3 +103,114 @@ class TestEnrichSpecTags:
         second = enrich_spec_tags(spec)
         assert second == []  # nothing new the second time
         assert len(spec["tags"]) == 2  # pet + user
+
+
+# ---------------------------------------------------------------------------
+# _fields_to_coercion_schema
+# ---------------------------------------------------------------------------
+
+
+class TestFieldsToCoercionSchema:
+    def test_simple_string_field(self) -> None:
+        fields = [ResponseField(name="name", python_type="str")]
+        result = _fields_to_coercion_schema(fields)
+        assert result == {"name": {"type": "string"}}
+
+    def test_integer_field(self) -> None:
+        fields = [ResponseField(name="id", python_type="int")]
+        result = _fields_to_coercion_schema(fields)
+        assert result == {"id": {"type": "integer"}}
+
+    def test_enum_field(self) -> None:
+        fields = [
+            ResponseField(name="status", python_type="str", is_enum=True, enum_values=["a", "b"])
+        ]
+        result = _fields_to_coercion_schema(fields)
+        assert result == {"status": {"type": "string", "enum": ["a", "b"]}}
+
+    def test_nested_object(self) -> None:
+        fields = [
+            ResponseField(
+                name="category",
+                python_type="dict",
+                is_nested_object=True,
+                nested_fields=[
+                    ResponseField(name="id", python_type="int"),
+                    ResponseField(name="name", python_type="str"),
+                ],
+            )
+        ]
+        result = _fields_to_coercion_schema(fields)
+        assert result == {
+            "category": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "name": {"type": "string"},
+                },
+            }
+        }
+
+    def test_array_of_strings(self) -> None:
+        fields = [ResponseField(name="urls", python_type="list", is_array=True)]
+        result = _fields_to_coercion_schema(fields)
+        assert result == {"urls": {"type": "array", "items": {"type": "string"}}}
+
+    def test_array_of_objects(self) -> None:
+        fields = [
+            ResponseField(
+                name="tags",
+                python_type="list",
+                is_array=True,
+                nested_fields=[
+                    ResponseField(name="id", python_type="int"),
+                    ResponseField(name="name", python_type="str"),
+                ],
+            )
+        ]
+        result = _fields_to_coercion_schema(fields)
+        assert result == {
+            "tags": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"},
+                        "name": {"type": "string"},
+                    },
+                },
+            }
+        }
+
+
+# ---------------------------------------------------------------------------
+# get_body_schemas
+# ---------------------------------------------------------------------------
+
+
+class TestGetBodySchemas:
+    def test_extracts_pet_body_schema(self, tmp_path: Path) -> None:
+        """get_body_schemas should return a schema for 'create_pet' from MINIMAL_OPENAPI_SPEC."""
+        spec_file = tmp_path / "openapi.json"
+        spec_file.write_text(json.dumps(MINIMAL_OPENAPI_SPEC), encoding="utf-8")
+        schemas = get_body_schemas(tmp_path)
+        assert "create_pet" in schemas
+        pet_schema = schemas["create_pet"]
+        assert pet_schema["name"]["type"] == "string"
+        assert pet_schema["category"]["type"] == "object"
+        assert pet_schema["photoUrls"]["type"] == "array"
+        assert pet_schema["tags"]["type"] == "array"
+        assert pet_schema["tags"]["items"]["type"] == "object"
+        assert pet_schema["status"]["enum"] == ["available", "pending", "sold"]
+
+    def test_returns_empty_for_missing_spec(self, tmp_path: Path) -> None:
+        schemas = get_body_schemas(tmp_path)
+        assert schemas == {}
+
+    def test_skips_get_endpoints(self, tmp_path: Path) -> None:
+        """GET endpoints should not appear in body schemas."""
+        spec_file = tmp_path / "openapi.json"
+        spec_file.write_text(json.dumps(MINIMAL_OPENAPI_SPEC), encoding="utf-8")
+        schemas = get_body_schemas(tmp_path)
+        assert "list_pets" not in schemas
+        assert "list_users" not in schemas
