@@ -649,21 +649,29 @@ def _extract_response_schema(
 
 
 def get_display_endpoints(
-    base_dir: Path | None = None, *, max_depth: int = 3
+    base_dir: Path | None = None,
+    *,
+    max_depth: int = 3,
+    spec: dict[str, Any] | None = None,
 ) -> dict[str, list[DisplayEndpoint]]:
     """Extract GET endpoints with parsed response schemas for display tool generation.
+
+    Args:
+        base_dir: Directory containing the OpenAPI spec (fallback when *spec* is None).
+        max_depth: Maximum nesting depth for response schema parsing.
+        spec: Pre-loaded OpenAPI spec dict.  When provided the file-system
+              lookup is skipped, which ensures overlay-enhanced specs are used.
 
     Returns:
         Dictionary mapping tag names to lists of DisplayEndpoint with resolved schemas.
     """
-    if base_dir is None:
-        base_dir = Path.cwd()
-
-    openapi_path = _find_openapi_spec(base_dir)
-    if not openapi_path or not openapi_path.exists():
-        return {}
-
-    spec = _load_openapi_spec(openapi_path)
+    if spec is None:
+        if base_dir is None:
+            base_dir = Path.cwd()
+        openapi_path = _find_openapi_spec(base_dir)
+        if not openapi_path or not openapi_path.exists():
+            return {}
+        spec = _load_openapi_spec(openapi_path)
     if not spec or "paths" not in spec:
         return {}
 
@@ -784,21 +792,29 @@ def _extract_request_body_schema(
 
 
 def get_form_endpoints(
-    base_dir: Path | None = None, *, max_depth: int = 3
+    base_dir: Path | None = None,
+    *,
+    max_depth: int = 3,
+    spec: dict[str, Any] | None = None,
 ) -> dict[str, list[FormEndpoint]]:
     """Extract POST/PUT endpoints with request body schemas for form generation.
+
+    Args:
+        base_dir: Directory containing the OpenAPI spec (fallback when *spec* is None).
+        max_depth: Maximum nesting depth for request body schema parsing.
+        spec: Pre-loaded OpenAPI spec dict.  When provided the file-system
+              lookup is skipped, which ensures overlay-enhanced specs are used.
 
     Returns:
         Dictionary mapping tag names to lists of FormEndpoint.
     """
-    if base_dir is None:
-        base_dir = Path.cwd()
-
-    openapi_path = _find_openapi_spec(base_dir)
-    if not openapi_path or not openapi_path.exists():
-        return {}
-
-    spec = _load_openapi_spec(openapi_path)
+    if spec is None:
+        if base_dir is None:
+            base_dir = Path.cwd()
+        openapi_path = _find_openapi_spec(base_dir)
+        if not openapi_path or not openapi_path.exists():
+            return {}
+        spec = _load_openapi_spec(openapi_path)
     if not spec or "paths" not in spec:
         return {}
 
@@ -847,20 +863,28 @@ def get_form_endpoints(
     return forms_by_tag
 
 
-def get_delete_endpoints(base_dir: Path | None = None) -> dict[str, list[DeleteEndpoint]]:
+def get_delete_endpoints(
+    base_dir: Path | None = None,
+    *,
+    spec: dict[str, Any] | None = None,
+) -> dict[str, list[DeleteEndpoint]]:
     """Extract DELETE endpoints for generating delete confirmation dialogs.
+
+    Args:
+        base_dir: Directory containing the OpenAPI spec (fallback when *spec* is None).
+        spec: Pre-loaded OpenAPI spec dict.  When provided the file-system
+              lookup is skipped, which ensures overlay-enhanced specs are used.
 
     Returns:
         Dictionary mapping tag names to lists of DeleteEndpoint.
     """
-    if base_dir is None:
-        base_dir = Path.cwd()
-
-    openapi_path = _find_openapi_spec(base_dir)
-    if not openapi_path or not openapi_path.exists():
-        return {}
-
-    spec = _load_openapi_spec(openapi_path)
+    if spec is None:
+        if base_dir is None:
+            base_dir = Path.cwd()
+        openapi_path = _find_openapi_spec(base_dir)
+        if not openapi_path or not openapi_path.exists():
+            return {}
+        spec = _load_openapi_spec(openapi_path)
     if not spec or "paths" not in spec:
         return {}
 

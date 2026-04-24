@@ -327,14 +327,16 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         import json as _json
 
         with open(openapi_spec, encoding="utf-8") as _f:
-            spec = _json.load(_f)
+            openapi_spec_dict = _json.load(_f)
 
         from openapi_py_fetch.generator import generate_client_package
 
         from .introspection import enrich_spec_tags
 
         generated_dir.mkdir(parents=True, exist_ok=True)
-        ok = generate_client_package(spec, generated_dir, enrich_tags_fn=enrich_spec_tags)
+        ok = generate_client_package(
+            openapi_spec_dict, generated_dir, enrich_tags_fn=enrich_spec_tags
+        )
         if not ok:
             print("\n❌ API Client Generation Failed")
             print("\n💡 Verify your openapi.json is valid:")
@@ -356,7 +358,7 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         )
 
         # Calculate resource count early for conditional logic
-        total_resources = sum(spec.resource_count for spec in modules.values())
+        total_resources = sum(mod.resource_count for mod in modules.values())
 
         # Print summary
         print_metadata_summary(api_metadata, security_config)
@@ -427,9 +429,13 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                 )
                 from .writers import write_display_modules
 
-                display_endpoints = get_display_endpoints(src_dir, max_depth=args.schema_depth)
-                form_endpoints = get_form_endpoints(src_dir, max_depth=args.schema_depth)
-                delete_endpoints = get_delete_endpoints(src_dir)
+                display_endpoints = get_display_endpoints(
+                    src_dir, max_depth=args.schema_depth, spec=openapi_spec_dict
+                )
+                form_endpoints = get_form_endpoints(
+                    src_dir, max_depth=args.schema_depth, spec=openapi_spec_dict
+                )
+                delete_endpoints = get_delete_endpoints(src_dir, spec=openapi_spec_dict)
                 display_modules = {}
                 for tag, endpoints in display_endpoints.items():
                     api_var = f"{tag}_api"

@@ -12,6 +12,9 @@ from mcp_generator.introspection import (
     _resolve_ref,
     enrich_spec_tags,
     get_body_schemas,
+    get_delete_endpoints,
+    get_display_endpoints,
+    get_form_endpoints,
 )
 from mcp_generator.models import ResponseField
 from test.conftest import MINIMAL_OPENAPI_SPEC
@@ -677,3 +680,157 @@ class TestFhirContentType:
         result = _extract_response_schema(responses, spec)
         assert result is not None
         assert result.fields[0].name == "data"
+
+
+# ===========================================================================
+# Spec passthrough — overlay-enhanced specs reach endpoint extraction
+# ===========================================================================
+
+_PASSTHROUGH_SPEC: dict = {
+    "openapi": "3.0.0",
+    "info": {"title": "Test", "version": "1.0.0"},
+    "tags": [{"name": "items"}],
+    "paths": {
+        "/items": {
+            "get": {
+                "operationId": "listItems",
+                "tags": ["items"],
+                "summary": "List items",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "schema": {"type": "string"},
+                        "description": "Search query",
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {"type": "integer"},
+                                            "name": {"type": "string"},
+                                        },
+                                    },
+                                }
+                            }
+                        }
+                    }
+                },
+            },
+            "post": {
+                "operationId": "createItem",
+                "tags": ["items"],
+                "summary": "Create item",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {"type": "string"},
+                                    "price": {"type": "number"},
+                                },
+                                "required": ["name"],
+                            }
+                        }
+                    }
+                },
+                "responses": {"201": {"description": "Created"}},
+            },
+        },
+        "/items/{itemId}": {
+            "delete": {
+                "operationId": "deleteItem",
+                "tags": ["items"],
+                "summary": "Delete item",
+                "parameters": [
+                    {"name": "itemId", "in": "path", "required": True, "schema": {"type": "string"}}
+                ],
+                "responses": {"204": {"description": "Deleted"}},
+            }
+        },
+    },
+    "components": {"schemas": {}},
+}
+
+
+class TestSpecPassthrough:
+    """When spec= is provided, endpoint functions must use it instead of reading from disk."""
+
+    def test_display_endpoints_from_spec_dict(self) -> None:
+        """get_display_endpoints(spec=...) should parse endpoints without disk I/O."""
+        result = get_display_endpoints(spec=_PASSTHROUGH_SPEC)
+        assert "items" in result
+        ep = result["items"][0]
+        assert ep.operation_id == "listItems"
+        assert ep.response_schema is not None
+        names = {f.name for f in ep.response_schema.fields}
+        assert names == {"id", "name"}
+
+    def test_form_endpoints_from_spec_dict(self) -> None:
+        """get_form_endpoints(spec=...) should parse POST/PUT bodies without disk I/O."""
+        result = get_form_endpoints(spec=_PASSTHROUGH_SPEC)
+        assert "items" in result
+        ep = result["items"][0]
+        assert ep.operation_id == "createItem"
+        field_names = {f.name for f in ep.fields}
+        assert "name" in field_names
+        assert "price" in field_names
+
+    def test_delete_endpoints_from_spec_dict(self) -> None:
+        """get_delete_endpoints(spec=...) should find DELETE ops without disk I/O."""
+        result = get_delete_endpoints(spec=_PASSTHROUGH_SPEC)
+        assert "items" in result
+        ep = result["items"][0]
+        assert ep.operation_id == "deleteItem"
+        assert any(p["name"] == "itemId" for p in ep.path_params)
+
+    def test_overlay_enhanced_spec_used_over_disk(self, tmp_path) -> None:
+        """When spec= is provided, the disk file (if different) must be ignored."""
+        import json
+
+        # Write a DIFFERENT spec to disk
+        disk_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "Disk", "version": "1.0.0"},
+            "paths": {
+                "/other": {
+                    "get": {
+                        "operationId": "listOther",
+                        "tags": ["other"],
+                        "responses": {
+                            "200": {
+                                "content": {
+                                    "application/json": {
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {"x": {"type": "string"}},
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    }
+                }
+            },
+            "components": {"schemas": {}},
+        }
+        (tmp_path / "openapi.json").write_text(json.dumps(disk_spec), encoding="utf-8")
+
+        # Pass the in-memory spec — should get "items", NOT "other"
+        result = get_display_endpoints(tmp_path, spec=_PASSTHROUGH_SPEC)
+        assert "items" in result
+        assert "other" not in result
+
+    def test_display_query_params_include_description(self) -> None:
+        """Query param descriptions from spec should flow through to endpoints."""
+        result = get_display_endpoints(spec=_PASSTHROUGH_SPEC)
+        ep = result["items"][0]
+        q_param = next(p for p in ep.query_params if p["name"] == "q")
+        assert q_param["description"] == "Search query"
