@@ -310,7 +310,7 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
     # Always (re-)generate the API client so method bodies stay in sync
     # with the current openapi-py-fetch runtime.
     generated_dir = src_dir / "generated_openapi"
-    openapi_client_dir = generated_dir / "openapi_client"
+    _openapi_client_dir = generated_dir / "openapi_client"
 
     print("\n🔨 Generating Python API client from OpenAPI specification...")
 
@@ -411,7 +411,11 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
             else:
                 print("\n🖼️  Generating API-specific display tools from response schemas...")
                 from .display_renderers import render_display_module
-                from .introspection import get_delete_endpoints, get_display_endpoints, get_form_endpoints
+                from .introspection import (
+                    get_delete_endpoints,
+                    get_display_endpoints,
+                    get_form_endpoints,
+                )
                 from .writers import write_display_modules
 
                 display_endpoints = get_display_endpoints(src_dir)

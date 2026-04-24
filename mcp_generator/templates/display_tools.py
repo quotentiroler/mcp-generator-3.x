@@ -308,8 +308,12 @@ def show_form(
                                 ):
                                     for opt in f["options"]:
                                         SelectOption(
-                                            label=opt if isinstance(opt, str) else opt.get("label", ""),
-                                            value=opt if isinstance(opt, str) else opt.get("value", ""),
+                                            label=opt
+                                            if isinstance(opt, str)
+                                            else opt.get("label", ""),
+                                            value=opt
+                                            if isinstance(opt, str)
+                                            else opt.get("value", ""),
                                         )
                             else:
                                 Input(

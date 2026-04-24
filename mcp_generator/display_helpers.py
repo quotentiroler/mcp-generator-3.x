@@ -116,7 +116,7 @@ def render_detail_tabs(fields: list[ResponseField], indent: int = 8) -> str:
 
         if f.is_array:
             lines.append(f'{pad}        _items = result.get("{f.name}") or []')
-            lines.append(f'{pad}        if _items:')
+            lines.append(f"{pad}        if _items:")
             lines.append(f'{pad}            Badge(f"{{len(_items)}} items", variant="outline")')
             if f.nested_fields:
                 cols = table_columns_for_fields(f.nested_fields)
@@ -126,31 +126,33 @@ def render_detail_tabs(fields: list[ResponseField], indent: int = 8) -> str:
                         f'{pad}                DataTableColumn(key="{c["key"]}", header="{c["label"]}", sortable=True),'
                     )
                 cols_code = "\n".join(col_lines)
-                lines.append(f'{pad}            DataTable(')
-                lines.append(f'{pad}                rows=_items,')
-                lines.append(f'{pad}                columns=[')
+                lines.append(f"{pad}            DataTable(")
+                lines.append(f"{pad}                rows=_items,")
+                lines.append(f"{pad}                columns=[")
                 lines.append(cols_code)
-                lines.append(f'{pad}                ],')
-                lines.append(f'{pad}                search=True,')
-                lines.append(f'{pad}            )')
+                lines.append(f"{pad}                ],")
+                lines.append(f"{pad}                search=True,")
+                lines.append(f"{pad}            )")
             else:
-                lines.append(f'{pad}            for _item in _items:')
-                lines.append(f'{pad}                Text(str(_item))')
-            lines.append(f'{pad}        else:')
+                lines.append(f"{pad}            for _item in _items:")
+                lines.append(f"{pad}                Text(str(_item))")
+            lines.append(f"{pad}        else:")
             lines.append(f'{pad}            Muted("No items")')
 
         elif f.is_nested_object and f.nested_fields:
             sub_val = f'(result.get("{f.name}") or {{}})'
-            lines.append(f'{pad}        with Card():')
+            lines.append(f"{pad}        with Card():")
             lines.append(f'{pad}            with CardContent(css_class="py-4"):')
             sub_shown = 0
             for nf in f.nested_fields:
                 if nf.is_array or nf.is_nested_object:
                     continue
                 if sub_shown > 0:
-                    lines.append(f'{pad}                Separator()')
+                    lines.append(f"{pad}                Separator()")
                 nlabel = nf.name.replace("_", " ").title()
-                lines.append(f'{pad}                with Row(gap=4, align="center", css_class="py-2"):')
+                lines.append(
+                    f'{pad}                with Row(gap=4, align="center", css_class="py-2"):'
+                )
                 lines.append(
                     f'{pad}                    Text("{nlabel}", css_class="font-medium text-muted-foreground w-40 shrink-0")'
                 )
@@ -163,7 +165,9 @@ def render_detail_tabs(fields: list[ResponseField], indent: int = 8) -> str:
 
 
 def render_expandable_detail(
-    fields: list[ResponseField], shown_columns: set[str], indent: int = 8,
+    fields: list[ResponseField],
+    shown_columns: set[str],
+    indent: int = 8,
 ) -> str:
     """Generate the detail component code for ExpandableRow."""
     pad = " " * indent

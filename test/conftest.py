@@ -34,9 +34,7 @@ MINIMAL_OPENAPI_SPEC: dict = {
                 "summary": "Create a pet",
                 "requestBody": {
                     "content": {
-                        "application/json": {
-                            "schema": {"$ref": "#/components/schemas/Pet"}
-                        }
+                        "application/json": {"schema": {"$ref": "#/components/schemas/Pet"}}
                     }
                 },
                 "responses": {"201": {"description": "Created"}},

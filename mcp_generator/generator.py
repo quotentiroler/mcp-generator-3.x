@@ -64,8 +64,11 @@ def generate_modular_servers(
         resource_endpoints = resources_by_tag.get(tag_name, [])
 
         module_spec = generate_server_module(
-            api_var_name, api_class, resource_endpoints,
-            exclude_methods=seen_methods, body_schemas=body_schemas,
+            api_var_name,
+            api_class,
+            resource_endpoints,
+            exclude_methods=seen_methods,
+            body_schemas=body_schemas,
         )
         servers[module_spec.module_name] = module_spec
         total_tools += module_spec.tool_count

@@ -4,7 +4,11 @@ import copy
 import json
 from pathlib import Path
 
-from mcp_generator.introspection import enrich_spec_tags, get_body_schemas, _fields_to_coercion_schema
+from mcp_generator.introspection import (
+    _fields_to_coercion_schema,
+    enrich_spec_tags,
+    get_body_schemas,
+)
 from mcp_generator.models import ResponseField
 from test.conftest import MINIMAL_OPENAPI_SPEC
 
@@ -119,9 +123,7 @@ class TestFieldsToCoercionSchema:
 
     def test_enum_field(self) -> None:
         fields = [
-            ResponseField(
-                name="status", python_type="str", is_enum=True, enum_values=["a", "b"]
-            )
+            ResponseField(name="status", python_type="str", is_enum=True, enum_values=["a", "b"])
         ]
         result = _fields_to_coercion_schema(fields)
         assert result == {"status": {"type": "string", "enum": ["a", "b"]}}

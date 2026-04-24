@@ -533,9 +533,7 @@ class TestBodySchemaCoercion:
                 "category": {"type": "object", "properties": {"name": {"type": "string"}}},
             }
         }
-        module = generate_server_module(
-            "pet_api", FakeApi, body_schemas=schemas
-        )
+        module = generate_server_module("pet_api", FakeApi, body_schemas=schemas)
         assert "def _coerce_form_data(" in module.code
 
     def test_coerce_function_absent_when_no_schemas(self) -> None:
@@ -555,9 +553,7 @@ class TestBodySchemaCoercion:
                 "photoUrls": {"type": "array", "items": {"type": "string"}},
             }
         }
-        code = generate_tool_for_method(
-            "pet_api", "add_pet", FakeApi.add_pet, body_schemas=schemas
-        )
+        code = generate_tool_for_method("pet_api", "add_pet", FakeApi.add_pet, body_schemas=schemas)
         assert "_body_schema" in code
         assert "_coerce_form_data(data, _body_schema)" in code
         assert "'photoUrls'" in code
@@ -568,9 +564,7 @@ class TestBodySchemaCoercion:
         FakeApi = self._make_method()
         # body_schemas exists but doesn't have an entry for add_pet
         schemas = {"update_pet": {"name": {"type": "string"}}}
-        code = generate_tool_for_method(
-            "pet_api", "add_pet", FakeApi.add_pet, body_schemas=schemas
-        )
+        code = generate_tool_for_method("pet_api", "add_pet", FakeApi.add_pet, body_schemas=schemas)
         assert "_coerce_form_data" not in code
         assert "_json.dumps(data)" in code
 
@@ -606,7 +600,12 @@ class TestBodySchemaCoercion:
         for i, line in enumerate(lines):
             if line.startswith("def _coerce_form_data("):
                 func_start = i
-            elif func_start is not None and line != "" and not line.startswith(" ") and i > func_start + 1:
+            elif (
+                func_start is not None
+                and line != ""
+                and not line.startswith(" ")
+                and i > func_start + 1
+            ):
                 func_end = i
                 break
         assert func_start is not None, "_coerce_form_data not found in generated code"

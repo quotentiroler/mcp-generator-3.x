@@ -153,9 +153,6 @@ def {func_name}({params_str}) -> Any:
     return code
 
 
-
-
-
 # ---------------------------------------------------------------------------
 # Code generation: table view
 # ---------------------------------------------------------------------------
@@ -204,16 +201,20 @@ def _render_table_tool(endpoint: DisplayEndpoint, api_var_name: str) -> str:
     # Determine if rows should be expandable (has nested/array fields or many flat fields)
     has_nested = any(f.is_nested_object or f.is_array for f in schema.fields)
     shown_col_keys = {c["key"] for c in columns}
-    hidden_flat = [f for f in schema.fields if not f.is_array and not f.is_nested_object and f.name not in shown_col_keys]
+    hidden_flat = [
+        f
+        for f in schema.fields
+        if not f.is_array and not f.is_nested_object and f.name not in shown_col_keys
+    ]
     use_expandable = has_nested or len(hidden_flat) > 0
 
     if use_expandable:
         # Build the detail component for expanded rows
         detail_lines = render_expandable_detail(schema.fields, shown_col_keys)
-        rows_code = f'''    _rows = []
+        rows_code = f"""    _rows = []
     for _r in results:
         _rows.append(ExpandableRow(_truncate_row(_r), detail=_build_{func_name}_detail(_r)))
-'''
+"""
         detail_helper = f'''
 def _build_{func_name}_detail(row: dict) -> Any:
     """Build expanded detail view for a table row."""
@@ -401,13 +402,9 @@ def _render_form_tool(form: FormEndpoint) -> str:
         is_required = f.name in form.required_fields
 
         if f.is_enum and f.enum_values:
-            field_lines.append(
-                f'{pad}with Select(name="{f.name}", placeholder="{label}"):'
-            )
+            field_lines.append(f'{pad}with Select(name="{f.name}", placeholder="{label}"):')
             for val in f.enum_values:
-                field_lines.append(
-                    f'{pad}    SelectOption(value="{val}", label="{val}")'
-                )
+                field_lines.append(f'{pad}    SelectOption(value="{val}", label="{val}")')
         else:
             input_type = "number" if f.python_type in ("int", "float") else "text"
             field_lines.append(
@@ -490,7 +487,7 @@ def _render_delete_tool(delete: DeleteEndpoint) -> str:
 
     # Build a context line showing what is being deleted (e.g. "petId: {petId}")
     if delete.path_params:
-        id_parts = ", ".join(f'{p["name"]}: {{{p["name"]}}}' for p in delete.path_params)
+        id_parts = ", ".join(f"{p['name']}: {{{p['name']}}}" for p in delete.path_params)
         context_line = f'                Muted(f"Resource: {id_parts}")'
     else:
         context_line = ""
@@ -579,13 +576,9 @@ def _build_extra_imports(
     import_lines: list[str] = []
     if components:
         all_components = sorted(set(components))
-        import_lines.append(
-            f"    from prefab_ui.components import {', '.join(all_components)}"
-        )
+        import_lines.append(f"    from prefab_ui.components import {', '.join(all_components)}")
     if actions:
-        import_lines.append(
-            f"    from prefab_ui.actions import {', '.join(sorted(set(actions)))}"
-        )
+        import_lines.append(f"    from prefab_ui.actions import {', '.join(sorted(set(actions)))}")
     if mcp_actions:
         import_lines.append(
             f"    from prefab_ui.actions.mcp import {', '.join(sorted(set(mcp_actions)))}"
@@ -641,8 +634,8 @@ def render_display_module(
             has_tables = True
             shown_cols = {c["key"] for c in table_columns_for_fields(schema.fields)}
             extra = any(
-                (f.is_nested_object or f.is_array) or
-                (not f.is_array and not f.is_nested_object and f.name not in shown_cols)
+                (f.is_nested_object or f.is_array)
+                or (not f.is_array and not f.is_nested_object and f.name not in shown_cols)
                 for f in schema.fields
             )
             if extra:

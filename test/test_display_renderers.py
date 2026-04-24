@@ -10,7 +10,13 @@ from mcp_generator.introspection import (
     _parse_schema_fields,
     _resolve_ref,
 )
-from mcp_generator.models import DeleteEndpoint, DisplayEndpoint, FormEndpoint, ResponseField, ResponseSchema
+from mcp_generator.models import (
+    DeleteEndpoint,
+    DisplayEndpoint,
+    FormEndpoint,
+    ResponseField,
+    ResponseSchema,
+)
 
 # ---------------------------------------------------------------------------
 # Test OpenAPI spec with various response shapes
@@ -775,7 +781,10 @@ class TestDeleteDialogGeneration:
     def test_delete_tool_generated(self) -> None:
         """Delete endpoint produces a tool function."""
         code = render_display_module(
-            "pet", [], "pet_api", "PetApi",
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
             delete_endpoints=self._make_delete_endpoints(),
         )
         assert "def action_delete_delete_pet(" in code
@@ -783,7 +792,10 @@ class TestDeleteDialogGeneration:
     def test_delete_tool_has_dialog(self) -> None:
         """Delete tool must render a Dialog confirmation."""
         code = render_display_module(
-            "pet", [], "pet_api", "PetApi",
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
             delete_endpoints=self._make_delete_endpoints(),
         )
         assert 'Dialog(title="Confirm Deletion"' in code
@@ -792,7 +804,10 @@ class TestDeleteDialogGeneration:
     def test_delete_tool_calls_correct_tool(self) -> None:
         """Delete dialog must call the correct namespaced tool."""
         code = render_display_module(
-            "pet", [], "pet_api", "PetApi",
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
             delete_endpoints=self._make_delete_endpoints(),
         )
         assert '"Pet_delete_pet"' in code
@@ -800,7 +815,10 @@ class TestDeleteDialogGeneration:
     def test_delete_tool_has_destructive_button(self) -> None:
         """Delete dialog must have a destructive variant button."""
         code = render_display_module(
-            "pet", [], "pet_api", "PetApi",
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
             delete_endpoints=self._make_delete_endpoints(),
         )
         assert 'variant="destructive"' in code
@@ -808,7 +826,10 @@ class TestDeleteDialogGeneration:
     def test_delete_imports_included(self) -> None:
         """Delete tools must import Dialog, CloseOverlay, etc."""
         code = render_display_module(
-            "pet", [], "pet_api", "PetApi",
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
             delete_endpoints=self._make_delete_endpoints(),
         )
         assert "Dialog" in code
@@ -818,13 +839,16 @@ class TestDeleteDialogGeneration:
     def test_delete_dialog_shows_resource_identifier(self) -> None:
         """Delete dialog body must show the resource identifier being deleted."""
         code = render_display_module(
-            "pet", [], "pet_api", "PetApi",
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
             delete_endpoints=self._make_delete_endpoints(),
         )
         # Should show the param name and value in the confirmation message
         assert "petId" in code
         # The confirmation text should interpolate the parameter
-        assert "f\"" in code or "{petId}" in code
+        assert 'f"' in code or "{petId}" in code
 
     def test_delete_dialog_shows_username_for_user(self) -> None:
         """Delete dialog for user must show the username being deleted."""
@@ -839,7 +863,10 @@ class TestDeleteDialogGeneration:
             ),
         ]
         code = render_display_module(
-            "user", [], "user_api", "UserApi",
+            "user",
+            [],
+            "user_api",
+            "UserApi",
             delete_endpoints=delete_endpoints,
         )
         assert "{username}" in code
@@ -1060,7 +1087,7 @@ class TestAutoRefreshArguments:
         ]
         code = render_display_module("pet", endpoints, "pet_api", "PetApi")
         # CallTool should not have arguments= when there are no params
-        assert "CallTool(\"view_list_pets_table\")" in code
+        assert 'CallTool("view_list_pets_table")' in code
 
 
 # ===========================================================================
@@ -1157,7 +1184,7 @@ class TestNullSafeNestedAccess:
     def test_nested_object_uses_or_fallback(self) -> None:
         """Nested object access must use 'or {}' for None safety."""
         code = render_display_module("pet", self._make_nested_detail(), "pet_api", "PetApi")
-        assert 'or {})' in code
+        assert "or {})" in code
         # Must NOT use the unsafe pattern
         assert '.get("category", {})' not in code
 
@@ -1200,7 +1227,7 @@ class TestNullSafeNestedAccess:
         ]
         code = render_display_module("pet", endpoints, "pet_api", "PetApi")
         # Expandable detail must also use or {} pattern
-        assert 'or {})' in code
+        assert "or {})" in code
 
 
 # ===========================================================================
@@ -1380,7 +1407,10 @@ class TestLoaderInForms:
     def test_loader_in_form(self) -> None:
         """Form tool must include a Loader component."""
         code = render_display_module(
-            "pet", [], "pet_api", "PetApi",
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
             form_endpoints=self._make_form_endpoints(),
         )
         assert "Loader(" in code
@@ -1389,7 +1419,10 @@ class TestLoaderInForms:
     def test_loader_conditional_on_submitting(self) -> None:
         """Loader must be wrapped in If(STATE.submitting)."""
         code = render_display_module(
-            "pet", [], "pet_api", "PetApi",
+            "pet",
+            [],
+            "pet_api",
+            "PetApi",
             form_endpoints=self._make_form_endpoints(),
         )
         assert "If(STATE.submitting)" in code

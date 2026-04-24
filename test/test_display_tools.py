@@ -407,9 +407,7 @@ class TestShowFormPrefab:
         calltool = self._get_calltool(form)
         data = calltool.arguments["data"]
         for f in fields:
-            assert f["name"] in data, (
-                f"Field '{f['name']}' missing from CallTool data payload"
-            )
+            assert f["name"] in data, f"Field '{f['name']}' missing from CallTool data payload"
             assert data[f["name"]] == f"{{{{ {f['name']} }}}}"
 
     def test_calltool_has_no_extra_arguments(self) -> None:
