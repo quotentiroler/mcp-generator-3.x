@@ -218,6 +218,16 @@ def _build_{func_name}_detail(row: dict) -> Any:
         detail_helper = ""
         rows_ref = "results"
 
+    # Build CallTool arguments for auto-refresh (forward path/query params)
+    all_param_names = [p["name"] for p in endpoint.path_params] + [
+        p["name"] for p in endpoint.query_params
+    ]
+    if all_param_names:
+        refresh_args = {name: name for name in all_param_names}
+        call_tool_args = f", arguments={repr(refresh_args)}"
+    else:
+        call_tool_args = ""
+
     code = f'''{detail_helper}
 @mcp.tool(
     app=True if PREFAB_AVAILABLE else False,
@@ -243,10 +253,27 @@ def {func_name}({params_str}) -> Any:
         return {{"title": "{heading_text}", "count": len(results), "rows": results}}
 
 {rows_code}
-    with Column(gap=5, css_class="p-6 max-w-4xl") as view:
-        Heading("{heading_text}")
+    with Column(gap=5, css_class="p-6 max-w-4xl", let={{"auto_refresh": False}}) as view:
+        with Row(gap=3, align="center", justify="between"):
+            Heading("{heading_text}")
+            Button(
+                "Auto-refresh",
+                variant="outline",
+                size="sm",
+                on_click=[
+                    SetState(key="auto_refresh", value=True),
+                    SetInterval(
+                        30000,
+                        on_tick=CallTool("{func_name}"{call_tool_args}),
+                        while_=STATE.auto_refresh,
+                    ),
+                ],
+                disabled=STATE.auto_refresh,
+            )
         with Row(gap=2, align="center"):
             Badge(f"{{len(results)}} records", variant="outline")
+            with If(STATE.auto_refresh):
+                Badge("Live", variant="success")
         DataTable(
             rows={rows_ref},
             columns=[
@@ -390,8 +417,6 @@ def {func_name}() -> Any:
     if not PREFAB_AVAILABLE:
         return {{"form": "{form.schema_name}", "submit_tool": "{form.tool_name}"}}
 
-    from prefab_ui.rx import STATE
-
     with Column(gap=5, css_class="p-6 max-w-2xl") as view:
         Heading("{summary}")
         with Card():
@@ -490,6 +515,7 @@ def _build_extra_imports(
     has_deletes: bool,
     has_nested: bool,
     has_expandable: bool,
+    has_tables: bool,
 ) -> str:
     """Build extra import block based on which features a module needs."""
     blocks: list[str] = []
@@ -515,6 +541,11 @@ def _build_extra_imports(
     if has_expandable:
         components.append("ExpandableRow")
 
+    if has_tables:
+        components.extend(["Button", "If"])
+        actions.extend(["SetInterval", "SetState"])
+        mcp_actions.append("CallTool")
+
     # Pydantic imports (forms only)
     if has_forms:
         blocks.append("from typing import Literal")
@@ -537,6 +568,8 @@ def _build_extra_imports(
         )
     if has_deletes:
         import_lines.append("    from prefab_ui.actions.ui import CloseOverlay")
+    if has_forms or has_tables:
+        import_lines.append("    from prefab_ui.rx import STATE")
 
     if import_lines:
         blocks.append("try:")
@@ -572,6 +605,7 @@ def render_display_module(
     # Determine which enhanced features are needed by scanning endpoints
     has_nested = False
     has_expandable = False
+    has_tables = False
     for ep in endpoints:
         schema = ep.response_schema
         if schema is None:
@@ -580,6 +614,7 @@ def render_display_module(
         if nested and schema.is_object:
             has_nested = True
         if schema.is_array:
+            has_tables = True
             shown_cols = {c["key"] for c in table_columns_for_fields(schema.fields)}
             extra = any(
                 (f.is_nested_object or f.is_array) or
@@ -634,6 +669,7 @@ def render_display_module(
         has_deletes=has_deletes,
         has_nested=has_nested,
         has_expandable=has_expandable,
+        has_tables=has_tables,
     )
 
     header = f'''"""

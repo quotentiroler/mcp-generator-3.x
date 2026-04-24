@@ -892,6 +892,70 @@ class TestTabbedDetailViews:
 
 
 # ===========================================================================
+# Test: SetInterval auto-refresh in table views
+# ===========================================================================
+
+
+class TestSetIntervalAutoRefresh:
+    """Tests for SetInterval-based auto-refresh in table views."""
+
+    @staticmethod
+    def _make_table_endpoints() -> list[DisplayEndpoint]:
+        return [
+            DisplayEndpoint(
+                operation_id="findPetsByStatus",
+                path="/pets/findByStatus",
+                http_method="get",
+                summary="Find pets by status",
+                tag="pet",
+                path_params=[],
+                query_params=[{"name": "status", "required": False, "schema": {"type": "string"}}],
+                response_schema=ResponseSchema(
+                    fields=[
+                        ResponseField(name="id", python_type="int"),
+                        ResponseField(name="name", python_type="str"),
+                    ],
+                    is_array=True,
+                    schema_name="Pet",
+                ),
+            ),
+        ]
+
+    def test_table_has_auto_refresh_button(self) -> None:
+        """Table view must include an Auto-refresh toggle button."""
+        code = render_display_module("pet", self._make_table_endpoints(), "pet_api", "PetApi")
+        assert '"Auto-refresh"' in code
+
+    def test_table_has_set_interval(self) -> None:
+        """Table view must include SetInterval action."""
+        code = render_display_module("pet", self._make_table_endpoints(), "pet_api", "PetApi")
+        assert "SetInterval(" in code
+        assert "30000" in code
+
+    def test_table_has_live_badge(self) -> None:
+        """Table view must show a Live badge when auto-refresh is active."""
+        code = render_display_module("pet", self._make_table_endpoints(), "pet_api", "PetApi")
+        assert 'Badge("Live"' in code
+        assert "STATE.auto_refresh" in code
+
+    def test_table_refresh_calls_same_tool(self) -> None:
+        """SetInterval on_tick must call the same table tool via CallTool."""
+        code = render_display_module("pet", self._make_table_endpoints(), "pet_api", "PetApi")
+        assert 'CallTool("view_find_pets_by_status_table"' in code
+
+    def test_table_imports_set_interval(self) -> None:
+        """Module with tables must import SetInterval."""
+        code = render_display_module("pet", self._make_table_endpoints(), "pet_api", "PetApi")
+        assert "SetInterval" in code
+        assert "STATE" in code
+
+    def test_table_auto_refresh_state(self) -> None:
+        """Table view must initialize auto_refresh state to False."""
+        code = render_display_module("pet", self._make_table_endpoints(), "pet_api", "PetApi")
+        assert '"auto_refresh": False' in code
+
+
+# ===========================================================================
 # Test: ExpandableRow in tables
 # ===========================================================================
 
