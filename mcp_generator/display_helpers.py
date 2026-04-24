@@ -115,7 +115,7 @@ def render_detail_tabs(fields: list[ResponseField], indent: int = 8) -> str:
         lines.append(f'{pad}    with Tab("{label}"):')
 
         if f.is_array:
-            lines.append(f'{pad}        _items = result.get("{f.name}", [])')
+            lines.append(f'{pad}        _items = result.get("{f.name}") or []')
             lines.append(f'{pad}        if _items:')
             lines.append(f'{pad}            Badge(f"{{len(_items)}} items", variant="outline")')
             if f.nested_fields:
@@ -140,7 +140,7 @@ def render_detail_tabs(fields: list[ResponseField], indent: int = 8) -> str:
             lines.append(f'{pad}            Muted("No items")')
 
         elif f.is_nested_object and f.nested_fields:
-            sub_val = f'result.get("{f.name}", {{}})'
+            sub_val = f'(result.get("{f.name}") or {{}})'
             lines.append(f'{pad}        with Card():')
             lines.append(f'{pad}            with CardContent(css_class="py-4"):')
             sub_shown = 0
@@ -194,7 +194,7 @@ def render_expandable_detail(
             continue
         label = f.name.replace("_", " ").title()
         lines.append(f'{pad}Muted("{label}")')
-        sub_val = f'row.get("{f.name}", {{}})'
+        sub_val = f'(row.get("{f.name}") or {{}})'
         for nf in f.nested_fields:
             if nf.is_array or nf.is_nested_object:
                 continue
@@ -216,7 +216,7 @@ def render_expandable_detail(
         lines.append(
             f'{pad}    Text("{label}", css_class="font-medium text-muted-foreground w-32")'
         )
-        lines.append(f'{pad}    _arr = row.get("{f.name}", [])')
+        lines.append(f'{pad}    _arr = row.get("{f.name}") or []')
         lines.append(f'{pad}    Badge(f"{{len(_arr)}} items", variant="outline")')
 
     if not lines:

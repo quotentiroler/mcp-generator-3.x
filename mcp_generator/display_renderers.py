@@ -114,6 +114,15 @@ def {func_name}({params_str}) -> Any:
     try:
         result = _call_api("{method_name}", {api_var_name}, {call_args_str})
     except Exception as e:
+        is_404 = hasattr(e, "status") and e.status == 404
+        if is_404:
+            msg = "The requested resource was not found."
+            if not PREFAB_AVAILABLE:
+                return {{"error": msg}}
+            with Column(gap=4, css_class="p-6") as view:
+                Heading("Not Found")
+                Muted(msg)
+            return PrefabApp(view=view)
         if not PREFAB_AVAILABLE:
             return {{"error": str(e)}}
         with Column(gap=4, css_class="p-6") as view:
@@ -203,7 +212,7 @@ def _render_table_tool(endpoint: DisplayEndpoint, api_var_name: str) -> str:
         detail_lines = render_expandable_detail(schema.fields, shown_col_keys)
         rows_code = f'''    _rows = []
     for _r in results:
-        _rows.append(ExpandableRow(_r, detail=_build_{func_name}_detail(_r)))
+        _rows.append(ExpandableRow(_truncate_row(_r), detail=_build_{func_name}_detail(_r)))
 '''
         detail_helper = f'''
 def _build_{func_name}_detail(row: dict) -> Any:
@@ -214,17 +223,17 @@ def _build_{func_name}_detail(row: dict) -> Any:
 '''
         rows_ref = "_rows"
     else:
-        rows_code = ""
+        rows_code = "    _display = [_truncate_row(r) for r in results]\n"
         detail_helper = ""
-        rows_ref = "results"
+        rows_ref = "_display"
 
     # Build CallTool arguments for auto-refresh (forward path/query params)
     all_param_names = [p["name"] for p in endpoint.path_params] + [
         p["name"] for p in endpoint.query_params
     ]
     if all_param_names:
-        refresh_args = {name: name for name in all_param_names}
-        call_tool_args = f", arguments={repr(refresh_args)}"
+        args_items = ", ".join(f'"{n}": {n}' for n in all_param_names)
+        call_tool_args = f", arguments={{{args_items}}}"
     else:
         call_tool_args = ""
 
@@ -726,7 +735,7 @@ _STATUS_VARIANTS = {variants_repr}
 mcp = FastMCP("{module_name}Display")
 '''
 
-    # The _call_api helper uses dict comprehension, so avoid f-string for that part
+    # The _call_api and _truncate_row helpers use dict comprehension, so avoid f-string
     helper = """
 def _call_api(method_name: str, api_instance, **kwargs):
     \"\"\"Call an API method, strip None kwargs, convert result to dict.\"\"\"
@@ -736,6 +745,14 @@ def _call_api(method_name: str, api_instance, **kwargs):
     if isinstance(result, list):
         return [item.to_dict() if hasattr(item, "to_dict") else item for item in result]
     return result.to_dict() if hasattr(result, "to_dict") else result
+
+
+def _truncate_row(row: dict, max_len: int = 30) -> dict:
+    \"\"\"Truncate long string values for table display.\"\"\"
+    return {
+        k: (str(v)[:max_len] + "\u2026" if isinstance(v, str) and len(str(v)) > max_len else v)
+        for k, v in row.items()
+    }
 
 """
 

@@ -892,6 +892,289 @@ class TestTabbedDetailViews:
 
 
 # ===========================================================================
+# Bug fix: Table views should truncate long strings for display
+# ===========================================================================
+
+
+class TestTableTruncation:
+    """Table display rows must truncate long string values."""
+
+    @staticmethod
+    def _make_table_endpoints() -> list[DisplayEndpoint]:
+        return [
+            DisplayEndpoint(
+                operation_id="findPetsByStatus",
+                path="/pets/findByStatus",
+                http_method="get",
+                summary="Find pets by status",
+                tag="pet",
+                path_params=[],
+                query_params=[],
+                response_schema=ResponseSchema(
+                    fields=[
+                        ResponseField(name="id", python_type="int"),
+                        ResponseField(name="name", python_type="str"),
+                    ],
+                    is_array=True,
+                    schema_name="Pet",
+                ),
+            ),
+        ]
+
+    def test_table_includes_truncation_helper(self) -> None:
+        """Generated module must include _truncate_row helper."""
+        code = render_display_module("pet", self._make_table_endpoints(), "pet_api", "PetApi")
+        assert "_truncate_row" in code
+
+    def test_non_expandable_table_truncates_rows(self) -> None:
+        """Non-expandable table must truncate display rows."""
+        code = render_display_module("pet", self._make_table_endpoints(), "pet_api", "PetApi")
+        assert "_truncate_row" in code
+        # Table passes truncated rows, not raw results
+        assert "rows=results" not in code or "_truncate_row" in code
+
+    def test_expandable_table_truncates_display_keeps_detail(self) -> None:
+        """Expandable table must truncate display dict but pass full data to detail."""
+        endpoints = [
+            DisplayEndpoint(
+                operation_id="findPets",
+                path="/pets",
+                http_method="get",
+                summary="Find pets",
+                tag="pet",
+                path_params=[],
+                query_params=[],
+                response_schema=ResponseSchema(
+                    fields=[
+                        ResponseField(name="id", python_type="int"),
+                        ResponseField(name="name", python_type="str"),
+                        ResponseField(
+                            name="category",
+                            python_type="dict",
+                            is_nested_object=True,
+                            nested_fields=[
+                                ResponseField(name="id", python_type="int"),
+                                ResponseField(name="name", python_type="str"),
+                            ],
+                        ),
+                    ],
+                    is_array=True,
+                    schema_name="Pet",
+                ),
+            ),
+        ]
+        code = render_display_module("pet", endpoints, "pet_api", "PetApi")
+        # ExpandableRow display should be truncated
+        assert "_truncate_row(_r)" in code
+        # Detail helper should receive full _r, not truncated
+        assert "_build_" in code
+
+
+# ===========================================================================
+# Bug fix: Auto-refresh CallTool must pass variable values, not strings
+# ===========================================================================
+
+
+class TestAutoRefreshArguments:
+    """Auto-refresh CallTool must reference function parameter variables."""
+
+    @staticmethod
+    def _make_table_with_param() -> list[DisplayEndpoint]:
+        return [
+            DisplayEndpoint(
+                operation_id="findPetsByStatus",
+                path="/pets/findByStatus",
+                http_method="get",
+                summary="Find pets by status",
+                tag="pet",
+                path_params=[],
+                query_params=[{"name": "status", "required": False, "schema": {"type": "string"}}],
+                response_schema=ResponseSchema(
+                    fields=[
+                        ResponseField(name="id", python_type="int"),
+                        ResponseField(name="name", python_type="str"),
+                    ],
+                    is_array=True,
+                    schema_name="Pet",
+                ),
+            ),
+        ]
+
+    def test_refresh_uses_variable_not_string_literal(self) -> None:
+        """CallTool arguments must reference the variable, not a string literal."""
+        code = render_display_module("pet", self._make_table_with_param(), "pet_api", "PetApi")
+        # Should have: "status": status  (variable reference)
+        assert '"status": status' in code
+        # Must NOT have: 'status': 'status'  (string literal)
+        assert "'status': 'status'" not in code
+
+    def test_no_params_means_no_arguments(self) -> None:
+        """Table with no params should not pass arguments to CallTool."""
+        endpoints = [
+            DisplayEndpoint(
+                operation_id="listPets",
+                path="/pets",
+                http_method="get",
+                summary="List pets",
+                tag="pet",
+                path_params=[],
+                query_params=[],
+                response_schema=ResponseSchema(
+                    fields=[
+                        ResponseField(name="id", python_type="int"),
+                        ResponseField(name="name", python_type="str"),
+                    ],
+                    is_array=True,
+                    schema_name="Pet",
+                ),
+            ),
+        ]
+        code = render_display_module("pet", endpoints, "pet_api", "PetApi")
+        # CallTool should not have arguments= when there are no params
+        assert "CallTool(\"view_list_pets_table\")" in code
+
+
+# ===========================================================================
+# Bug fix: Detail views should handle 404 with friendly Not Found
+# ===========================================================================
+
+
+class TestDetailView404:
+    """Detail views must show Not Found for 404 errors."""
+
+    @staticmethod
+    def _make_detail_endpoint() -> list[DisplayEndpoint]:
+        return [
+            DisplayEndpoint(
+                operation_id="getPetById",
+                path="/pets/{petId}",
+                http_method="get",
+                summary="Get pet by ID",
+                tag="pet",
+                path_params=[{"name": "petId", "required": True, "schema": {"type": "integer"}}],
+                query_params=[],
+                response_schema=ResponseSchema(
+                    fields=[
+                        ResponseField(name="id", python_type="int"),
+                        ResponseField(name="name", python_type="str"),
+                    ],
+                    is_object=True,
+                    schema_name="Pet",
+                ),
+            ),
+        ]
+
+    def test_404_shows_not_found(self) -> None:
+        """Detail view must check for 404 and show Not Found heading."""
+        code = render_display_module("pet", self._make_detail_endpoint(), "pet_api", "PetApi")
+        assert "e.status == 404" in code
+        assert "Not Found" in code
+
+    def test_404_uses_warning_variant(self) -> None:
+        """404 handler should use warning variant, not error."""
+        code = render_display_module("pet", self._make_detail_endpoint(), "pet_api", "PetApi")
+        # The 404 block should show a warning, distinct from generic errors
+        assert 'Heading("Not Found")' in code
+
+
+# ===========================================================================
+# Bug fix: Null-safe nested object/array access
+# ===========================================================================
+
+
+class TestNullSafeNestedAccess:
+    """Nested object/array access must handle None values safely."""
+
+    @staticmethod
+    def _make_nested_detail() -> list[DisplayEndpoint]:
+        return [
+            DisplayEndpoint(
+                operation_id="getPetById",
+                path="/pets/{petId}",
+                http_method="get",
+                summary="Get pet by ID",
+                tag="pet",
+                path_params=[{"name": "petId", "required": True, "schema": {"type": "integer"}}],
+                query_params=[],
+                response_schema=ResponseSchema(
+                    fields=[
+                        ResponseField(name="id", python_type="int"),
+                        ResponseField(name="name", python_type="str"),
+                        ResponseField(
+                            name="category",
+                            python_type="dict",
+                            is_nested_object=True,
+                            nested_fields=[
+                                ResponseField(name="id", python_type="int"),
+                                ResponseField(name="name", python_type="str"),
+                            ],
+                        ),
+                        ResponseField(
+                            name="tags",
+                            python_type="list",
+                            is_array=True,
+                            nested_fields=[
+                                ResponseField(name="id", python_type="int"),
+                                ResponseField(name="name", python_type="str"),
+                            ],
+                        ),
+                    ],
+                    is_object=True,
+                    schema_name="Pet",
+                ),
+            ),
+        ]
+
+    def test_nested_object_uses_or_fallback(self) -> None:
+        """Nested object access must use 'or {}' for None safety."""
+        code = render_display_module("pet", self._make_nested_detail(), "pet_api", "PetApi")
+        assert 'or {})' in code
+        # Must NOT use the unsafe pattern
+        assert '.get("category", {})' not in code
+
+    def test_array_field_uses_or_fallback(self) -> None:
+        """Array field access must use 'or []' for None safety."""
+        code = render_display_module("pet", self._make_nested_detail(), "pet_api", "PetApi")
+        assert "or []" in code
+        # Must NOT use the unsafe pattern
+        assert '.get("tags", [])' not in code
+
+    def test_expandable_nested_uses_or_fallback(self) -> None:
+        """Expandable row detail nested access must also be None-safe."""
+        endpoints = [
+            DisplayEndpoint(
+                operation_id="findPets",
+                path="/pets",
+                http_method="get",
+                summary="Find pets",
+                tag="pet",
+                path_params=[],
+                query_params=[],
+                response_schema=ResponseSchema(
+                    fields=[
+                        ResponseField(name="id", python_type="int"),
+                        ResponseField(name="name", python_type="str"),
+                        ResponseField(
+                            name="category",
+                            python_type="dict",
+                            is_nested_object=True,
+                            nested_fields=[
+                                ResponseField(name="id", python_type="int"),
+                                ResponseField(name="name", python_type="str"),
+                            ],
+                        ),
+                    ],
+                    is_array=True,
+                    schema_name="Pet",
+                ),
+            ),
+        ]
+        code = render_display_module("pet", endpoints, "pet_api", "PetApi")
+        # Expandable detail must also use or {} pattern
+        assert 'or {})' in code
+
+
+# ===========================================================================
 # Test: SetInterval auto-refresh in table views
 # ===========================================================================
 
