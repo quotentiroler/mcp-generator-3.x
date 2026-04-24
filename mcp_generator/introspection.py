@@ -560,8 +560,9 @@ def _parse_schema_fields(
 
         # Nested object
         is_nested_object = prop_type == "object" and "properties" in resolved_prop
+        has_combiner = any(c in resolved_prop for c in ("allOf", "oneOf", "anyOf"))
         nested_fields: list[ResponseField] = []
-        if is_nested_object or "$ref" in prop_schema:
+        if is_nested_object or "$ref" in prop_schema or has_combiner:
             nested_fields = _parse_schema_fields(resolved_prop, spec, depth + 1, max_depth, visited)
             is_nested_object = bool(nested_fields)
 

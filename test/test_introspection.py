@@ -8,6 +8,7 @@ from mcp_generator.introspection import (
     _extract_response_schema,
     _fields_to_coercion_schema,
     _parse_schema_fields,
+    _ref_cache,
     _resolve_ref,
     enrich_spec_tags,
     get_body_schemas,
@@ -225,7 +226,7 @@ class TestGetBodySchemas:
 
 
 class TestConfigurableMaxDepth:
-    """max_depth should be configurable, not hardcoded to 3."""
+    """max_depth controls how deep schema parsing recurses through $ref chains."""
 
     @staticmethod
     def _deep_spec() -> dict:
@@ -255,7 +256,7 @@ class TestConfigurableMaxDepth:
         }
 
     def test_depth_3_truncates_at_level_3(self) -> None:
-        """Default depth=3 should stop at D (empty nested_fields)."""
+        """depth=3: A(0) > b(1) > c(2) > d(3, no children)."""
         spec = self._deep_spec()
         schema = spec["components"]["schemas"]["A"]
         fields = _parse_schema_fields(schema, spec, max_depth=3)
@@ -265,31 +266,69 @@ class TestConfigurableMaxDepth:
         assert c.name == "c"
         d = c.nested_fields[0]
         assert d.name == "d"
-        # At depth 3, D exists but its children (E) are truncated
         assert d.nested_fields == []
 
-    def test_depth_5_reaches_level_5(self) -> None:
-        """max_depth=5 should reach all the way to E.value."""
+    def test_depth_5_reaches_leaf(self) -> None:
+        """depth=5: reaches E.value at the bottom of the chain."""
         spec = self._deep_spec()
         schema = spec["components"]["schemas"]["A"]
         fields = _parse_schema_fields(schema, spec, max_depth=5)
-        b = fields[0]
-        c = b.nested_fields[0]
-        d = c.nested_fields[0]
-        assert d.name == "d"
-        e = d.nested_fields[0]
-        assert e.name == "e"
-        assert e.nested_fields[0].name == "value"
+        # Walk A > b > c > d > e > value
+        node = fields[0]
+        for expected in ("b", "c", "d", "e"):
+            assert node.name == expected
+            assert len(node.nested_fields) > 0, f"{expected} should have children at depth 5"
+            node = node.nested_fields[0]
+        assert node.name == "value"
+        assert node.python_type == "str"
 
-    def test_depth_1_returns_top_level_only(self) -> None:
-        """max_depth=1 should return top-level properties but no nested children."""
+    def test_depth_1_returns_flat_props_only(self) -> None:
+        """depth=1: top-level property exists but has no nested children."""
         spec = self._deep_spec()
         schema = spec["components"]["schemas"]["A"]
         fields = _parse_schema_fields(schema, spec, max_depth=1)
-        # Depth 0 parses A's properties (b), but b's nested_fields need depth 1 which is capped
         assert len(fields) == 1
         assert fields[0].name == "b"
         assert fields[0].nested_fields == []
+
+    def test_depth_threads_through_extract_response_schema(self) -> None:
+        """max_depth parameter on _extract_response_schema reaches _parse_schema_fields."""
+        spec = self._deep_spec()
+        responses = {
+            "200": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/A"}}}}
+        }
+        # depth=5 should produce deep nesting
+        result_deep = _extract_response_schema(responses, spec, max_depth=5)
+        assert result_deep is not None
+        b = result_deep.fields[0]
+        assert b.nested_fields[0].nested_fields[0].nested_fields != []
+
+        # depth=2 should truncate earlier
+        result_shallow = _extract_response_schema(responses, spec, max_depth=2)
+        assert result_shallow is not None
+        b2 = result_shallow.fields[0]
+        assert b2.nested_fields[0].nested_fields == []
+
+    def test_circular_ref_stops_regardless_of_depth(self) -> None:
+        """Circular $refs must stop even with high max_depth."""
+        spec = {
+            "components": {
+                "schemas": {
+                    "Node": {
+                        "type": "object",
+                        "properties": {
+                            "value": {"type": "string"},
+                            "child": {"$ref": "#/components/schemas/Node"},
+                        },
+                    }
+                }
+            }
+        }
+        fields = _parse_schema_fields(spec["components"]["schemas"]["Node"], spec, max_depth=100)
+        # Should not infinitely recurse — value field should exist
+        names = {f.name for f in fields}
+        assert "value" in names
+        assert "child" in names
 
 
 # ===========================================================================
@@ -325,7 +364,7 @@ class TestOneOfAnyOfHandling:
         }
 
     def test_oneof_merges_all_variant_properties(self) -> None:
-        """oneOf should expose properties from ALL variants."""
+        """oneOf with 3 $ref variants exposes all 4 unique properties."""
         spec = self._polymorphic_spec()
         schema = {
             "oneOf": [
@@ -336,13 +375,10 @@ class TestOneOfAnyOfHandling:
         }
         fields = _parse_schema_fields(schema, spec)
         names = {f.name for f in fields}
-        assert "valueString" in names
-        assert "valueQuantity" in names
-        assert "unit" in names
-        assert "valueCode" in names
+        assert names == {"valueString", "valueQuantity", "unit", "valueCode"}
 
     def test_anyof_merges_all_variant_properties(self) -> None:
-        """anyOf should expose properties from ALL variants."""
+        """anyOf with 2 $ref variants exposes all 3 properties."""
         spec = self._polymorphic_spec()
         schema = {
             "anyOf": [
@@ -352,12 +388,10 @@ class TestOneOfAnyOfHandling:
         }
         fields = _parse_schema_fields(schema, spec)
         names = {f.name for f in fields}
-        assert "valueString" in names
-        assert "valueQuantity" in names
-        assert "unit" in names
+        assert names == {"valueString", "valueQuantity", "unit"}
 
-    def test_oneof_with_inline_schemas(self) -> None:
-        """oneOf with inline object schemas should also merge."""
+    def test_oneof_inline_schemas_merged(self) -> None:
+        """oneOf with inline object schemas merges all properties."""
         spec: dict = {"components": {"schemas": {}}}
         schema = {
             "oneOf": [
@@ -367,8 +401,92 @@ class TestOneOfAnyOfHandling:
         }
         fields = _parse_schema_fields(schema, spec)
         names = {f.name for f in fields}
-        assert "alpha" in names
-        assert "beta" in names
+        assert names == {"alpha", "beta"}
+
+    def test_oneof_overlapping_properties_last_wins(self) -> None:
+        """When variants share a property name, last variant's definition wins."""
+        spec: dict = {"components": {"schemas": {}}}
+        schema = {
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {"status": {"type": "string", "description": "from variant A"}},
+                },
+                {
+                    "type": "object",
+                    "properties": {"status": {"type": "integer", "description": "from variant B"}},
+                },
+            ]
+        }
+        fields = _parse_schema_fields(schema, spec)
+        # Should have exactly one 'status' field (merged/overwritten)
+        assert len(fields) == 1
+        assert fields[0].name == "status"
+        assert fields[0].python_type == "int"  # last variant wins
+
+    def test_oneof_nested_inside_property(self) -> None:
+        """oneOf inside a property (not at schema root) should also merge."""
+        spec: dict = {
+            "components": {
+                "schemas": {
+                    "Observation": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string"},
+                            "value": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {"valueString": {"type": "string"}},
+                                    },
+                                    {
+                                        "type": "object",
+                                        "properties": {"valueNumber": {"type": "number"}},
+                                    },
+                                ]
+                            },
+                        },
+                    }
+                }
+            }
+        }
+        fields = _parse_schema_fields(spec["components"]["schemas"]["Observation"], spec)
+        names = {f.name for f in fields}
+        assert "id" in names
+        assert "value" in names
+        # The value field should have merged nested fields from both oneOf variants
+        value_field = next(f for f in fields if f.name == "value")
+        nested_names = {f.name for f in value_field.nested_fields}
+        assert "valueString" in nested_names
+        assert "valueNumber" in nested_names
+
+    def test_allof_still_merges(self) -> None:
+        """allOf must still work after the oneOf/anyOf refactor."""
+        spec = self._polymorphic_spec()
+        schema = {
+            "allOf": [
+                {"$ref": "#/components/schemas/StringValue"},
+                {"$ref": "#/components/schemas/QuantityValue"},
+            ]
+        }
+        fields = _parse_schema_fields(schema, spec)
+        names = {f.name for f in fields}
+        assert names == {"valueString", "valueQuantity", "unit"}
+
+    def test_oneof_preserves_field_types(self) -> None:
+        """Merged fields must retain their correct python_type from each variant."""
+        spec = self._polymorphic_spec()
+        schema = {
+            "oneOf": [
+                {"$ref": "#/components/schemas/StringValue"},
+                {"$ref": "#/components/schemas/QuantityValue"},
+            ]
+        }
+        fields = _parse_schema_fields(schema, spec)
+        by_name = {f.name: f for f in fields}
+        assert by_name["valueString"].python_type == "str"
+        assert by_name["valueQuantity"].python_type == "float"
+        assert by_name["unit"].python_type == "str"
 
 
 # ===========================================================================
@@ -377,10 +495,9 @@ class TestOneOfAnyOfHandling:
 
 
 class TestRefCaching:
-    """$ref resolution should be cached for performance on large specs."""
+    """$ref resolution uses a module-level cache for performance."""
 
     def test_resolve_ref_returns_correct_schema(self) -> None:
-        """Basic sanity: _resolve_ref returns the right schema."""
         spec = {
             "components": {
                 "schemas": {"Pet": {"type": "object", "properties": {"name": {"type": "string"}}}}
@@ -390,17 +507,53 @@ class TestRefCaching:
         assert result["type"] == "object"
         assert "name" in result["properties"]
 
-    def test_resolve_ref_is_cached(self) -> None:
-        """Repeated calls with the same ref should use cached result."""
+    def test_resolve_ref_cached_returns_same_object(self) -> None:
+        """Cached result must be the exact same object (identity check)."""
         spec = {
             "components": {
-                "schemas": {"Pet": {"type": "object", "properties": {"name": {"type": "string"}}}}
+                "schemas": {"Dog": {"type": "object", "properties": {"breed": {"type": "string"}}}}
             }
         }
-        r1 = _resolve_ref(spec, "#/components/schemas/Pet")
-        r2 = _resolve_ref(spec, "#/components/schemas/Pet")
-        # Both should return the same content
-        assert r1 == r2
+        r1 = _resolve_ref(spec, "#/components/schemas/Dog")
+        r2 = _resolve_ref(spec, "#/components/schemas/Dog")
+        assert r1 is r2  # identity, not just equality
+
+    def test_cache_key_includes_spec_identity(self) -> None:
+        """Different spec dicts with same ref must not share cached results."""
+        spec_a = {
+            "components": {
+                "schemas": {"X": {"type": "object", "properties": {"a": {"type": "string"}}}}
+            }
+        }
+        spec_b = {
+            "components": {
+                "schemas": {"X": {"type": "object", "properties": {"b": {"type": "integer"}}}}
+            }
+        }
+        result_a = _resolve_ref(spec_a, "#/components/schemas/X")
+        result_b = _resolve_ref(spec_b, "#/components/schemas/X")
+        assert "a" in result_a["properties"]
+        assert "b" in result_b["properties"]
+        assert result_a is not result_b
+
+    def test_cache_populated_after_resolve(self) -> None:
+        """The _ref_cache dict must contain entries after resolution."""
+        spec = {
+            "components": {
+                "schemas": {"Cat": {"type": "object", "properties": {"color": {"type": "string"}}}}
+            }
+        }
+        ref = "#/components/schemas/Cat"
+        _resolve_ref(spec, ref)
+        cache_key = (id(spec), ref)
+        assert cache_key in _ref_cache
+        assert _ref_cache[cache_key]["type"] == "object"
+
+    def test_missing_ref_returns_empty_dict(self) -> None:
+        """Non-existent $ref should return {} and cache the empty result."""
+        spec: dict = {"components": {"schemas": {}}}
+        result = _resolve_ref(spec, "#/components/schemas/NonExistent")
+        assert result == {}
 
 
 # ===========================================================================
@@ -409,7 +562,7 @@ class TestRefCaching:
 
 
 class TestFhirContentType:
-    """Response extraction should match application/fhir+json content type."""
+    """Response extraction supports FHIR and standard JSON content types."""
 
     def test_fhir_json_content_type(self) -> None:
         """application/fhir+json should be matched for response schema extraction."""
@@ -432,11 +585,10 @@ class TestFhirContentType:
         result = _extract_response_schema(responses, spec)
         assert result is not None
         names = {f.name for f in result.fields}
-        assert "id" in names
-        assert "resourceType" in names
+        assert names == {"id", "resourceType"}
 
     def test_standard_json_still_works(self) -> None:
-        """application/json should still work as before."""
+        """application/json continues to work."""
         spec: dict = {"components": {"schemas": {}}}
         responses = {
             "200": {
@@ -453,3 +605,75 @@ class TestFhirContentType:
         result = _extract_response_schema(responses, spec)
         assert result is not None
         assert result.fields[0].name == "name"
+
+    def test_json_preferred_over_fhir_when_both_present(self) -> None:
+        """When both application/json and application/fhir+json exist, json wins."""
+        spec: dict = {"components": {"schemas": {}}}
+        responses = {
+            "200": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {"from_json": {"type": "string"}},
+                        }
+                    },
+                    "application/fhir+json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {"from_fhir": {"type": "string"}},
+                        }
+                    },
+                }
+            }
+        }
+        result = _extract_response_schema(responses, spec)
+        assert result is not None
+        names = {f.name for f in result.fields}
+        assert "from_json" in names
+
+    def test_fhir_json_with_array_response(self) -> None:
+        """FHIR Bundle-style array responses should parse correctly."""
+        spec: dict = {"components": {"schemas": {}}}
+        responses = {
+            "200": {
+                "content": {
+                    "application/fhir+json": {
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "resourceType": {"type": "string"},
+                                    "id": {"type": "string"},
+                                },
+                            },
+                        }
+                    }
+                }
+            }
+        }
+        result = _extract_response_schema(responses, spec)
+        assert result is not None
+        assert result.is_array is True
+        names = {f.name for f in result.fields}
+        assert names == {"resourceType", "id"}
+
+    def test_wildcard_fallback_still_works(self) -> None:
+        """*/* content type should still be matched as last resort."""
+        spec: dict = {"components": {"schemas": {}}}
+        responses = {
+            "200": {
+                "content": {
+                    "*/*": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {"data": {"type": "string"}},
+                        }
+                    }
+                }
+            }
+        }
+        result = _extract_response_schema(responses, spec)
+        assert result is not None
+        assert result.fields[0].name == "data"
