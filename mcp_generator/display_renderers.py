@@ -201,9 +201,9 @@ def _render_table_tool(endpoint: DisplayEndpoint, api_var_name: str) -> str:
     if use_expandable:
         # Build the detail component for expanded rows
         detail_lines = render_expandable_detail(schema.fields, shown_col_keys)
-        rows_code = f'''        _rows = []
-        for _r in results:
-            _rows.append(ExpandableRow(_r, detail=_build_{func_name}_detail(_r)))
+        rows_code = f'''    _rows = []
+    for _r in results:
+        _rows.append(ExpandableRow(_r, detail=_build_{func_name}_detail(_r)))
 '''
         detail_helper = f'''
 def _build_{func_name}_detail(row: dict) -> Any:
