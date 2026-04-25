@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.2.6-alpha+acee146] - 2026-04-25
+
+### Changed
+
+- Dependencies updated
+
 ## [3.2.5]P26-04-25
 
 ### Changed
