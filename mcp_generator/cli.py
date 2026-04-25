@@ -118,6 +118,7 @@ Examples:
 
   # Enrich descriptions with an overlay or auto-enhance
   generate-mcp --overlay ./my-overlay.yaml
+  generate-mcp --overlay fhir --schema-depth 5
   generate-mcp --auto-overlay
 
   # Generate A2A agent adapter
@@ -187,10 +188,17 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
     )
 
     parser.add_argument(
+        "--schema-depth",
+        type=int,
+        default=3,
+        help="Max nesting depth for response schema parsing (default: 3, increase for deeply nested APIs)",
+    )
+
+    parser.add_argument(
         "--overlay",
         type=str,
         default=None,
-        help="Path to an OpenAPI Overlay 1.0.0 file to enrich descriptions before generation",
+        help="Overlay name or path. Bundled: 'fhir'. Or a path to an Overlay 1.0.0 file",
     )
 
     parser.add_argument(
@@ -276,7 +284,7 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         import json as _json_overlay
 
         from .introspection import _load_openapi_spec
-        from .overlay import apply_overlay, generate_overlay, load_overlay
+        from .overlay import apply_overlay, generate_overlay, load_overlay, resolve_overlay_path
 
         raw_spec = _load_openapi_spec(openapi_spec)
         if raw_spec is None:
@@ -286,8 +294,9 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         spec_copy = copy.deepcopy(raw_spec)
 
         if args.overlay:
-            print(f"\n📝 Applying OpenAPI Overlay: {args.overlay}")
-            overlay_doc = load_overlay(Path(args.overlay))
+            overlay_path = resolve_overlay_path(args.overlay)
+            print(f"\n📝 Applying OpenAPI Overlay: {overlay_path}")
+            overlay_doc = load_overlay(overlay_path)
             apply_overlay(spec_copy, overlay_doc)
             action_count = len(overlay_doc.get("actions", []))
             print(f"   ✅ Applied {action_count} overlay actions")
@@ -318,14 +327,16 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         import json as _json
 
         with open(openapi_spec, encoding="utf-8") as _f:
-            spec = _json.load(_f)
+            openapi_spec_dict = _json.load(_f)
 
         from openapi_py_fetch.generator import generate_client_package
 
         from .introspection import enrich_spec_tags
 
         generated_dir.mkdir(parents=True, exist_ok=True)
-        ok = generate_client_package(spec, generated_dir, enrich_tags_fn=enrich_spec_tags)
+        ok = generate_client_package(
+            openapi_spec_dict, generated_dir, enrich_tags_fn=enrich_spec_tags
+        )
         if not ok:
             print("\n❌ API Client Generation Failed")
             print("\n💡 Verify your openapi.json is valid:")
@@ -347,7 +358,7 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
         )
 
         # Calculate resource count early for conditional logic
-        total_resources = sum(spec.resource_count for spec in modules.values())
+        total_resources = sum(mod.resource_count for mod in modules.values())
 
         # Print summary
         print_metadata_summary(api_metadata, security_config)
@@ -418,9 +429,13 @@ Documentation: https://github.com/quotentiroler/mcp-generator-2.0
                 )
                 from .writers import write_display_modules
 
-                display_endpoints = get_display_endpoints(src_dir)
-                form_endpoints = get_form_endpoints(src_dir)
-                delete_endpoints = get_delete_endpoints(src_dir)
+                display_endpoints = get_display_endpoints(
+                    src_dir, max_depth=args.schema_depth, spec=openapi_spec_dict
+                )
+                form_endpoints = get_form_endpoints(
+                    src_dir, max_depth=args.schema_depth, spec=openapi_spec_dict
+                )
+                delete_endpoints = get_delete_endpoints(src_dir, spec=openapi_spec_dict)
                 display_modules = {}
                 for tag, endpoints in display_endpoints.items():
                     api_var = f"{tag}_api"

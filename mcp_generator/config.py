@@ -26,3 +26,7 @@ TOOL_NAME_OVERRIDES: dict[str, str] = {
 
 # Maximum tool name length (MCP/OpenAI limit)
 MAX_TOOL_NAME_LENGTH = 64
+
+# Default max nesting depth for response schema parsing.
+# Increase for deeply nested APIs (e.g. FHIR, Stripe).
+DEFAULT_SCHEMA_DEPTH = 3

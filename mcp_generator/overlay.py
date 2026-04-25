@@ -18,6 +18,24 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# Bundled overlay directory (shipped with the package)
+_BUNDLED_OVERLAYS_DIR = Path(__file__).parent / "overlays"
+
+# Known bundled overlay short names → filenames
+BUNDLED_OVERLAYS: dict[str, str] = {
+    "fhir": "fhir.overlay.yaml",
+}
+
+
+def resolve_overlay_path(overlay_arg: str) -> Path:
+    """Resolve an overlay argument to a file path.
+
+    Accepts either a bundled overlay name (e.g. "fhir") or a filesystem path.
+    """
+    if overlay_arg in BUNDLED_OVERLAYS:
+        return _BUNDLED_OVERLAYS_DIR / BUNDLED_OVERLAYS[overlay_arg]
+    return Path(overlay_arg)
+
 
 def load_overlay(overlay_path: Path) -> dict[str, Any]:
     """Load an overlay file (JSON or YAML).

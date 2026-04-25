@@ -1,20 +1,20 @@
 # Automatically create PR from staging to main
-# Runs when PR is merged into staging branch or on push
+# Triggered by other staging workflows (update-version-metadata, update-changelog,
+# promote-release) via workflow_dispatch AFTER they finish, to avoid race conditions
+# where this workflow reads pyproject.toml before the version is bumped.
 name: Auto PR to Main
 
 on:
-  pull_request:
-    types: [closed]
-    branches:
-      - staging
-  push:
-    branches:
-      - staging
+  workflow_dispatch:
+
+# Only one instance at a time — if dispatched twice in quick succession
+# (e.g. by version-metadata AND changelog workflows), the latest wins.
+concurrency:
+  group: auto-pr-to-main
+  cancel-in-progress: true
 
 jobs:
   create-pr:
-    # Only run if PR was actually merged (not just closed) or if triggered by push
-    if: github.event_name == 'push' || github.event.pull_request.merged == true
     name: Create PR from staging to main
     runs-on: ubuntu-latest
     permissions:

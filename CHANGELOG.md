@@ -1,5 +1,38 @@
 # Changelog
 
+## [3.2.5]P26-04-25
+
+### Changed
+
+- Dependencies updated
+
+
+- 🔧 Chores & Improvements: CI/CD stability and automation
+  - ci: fix auto-pr-to-main race condition by dispatching workflow instead of push trigger
+  - chore: update version metadata and sync main/staging after releases
+  - ci(promote): simplify to direct push on staging
+  - chore: skip changelog/metadata workflows on release commits
+  - docs: update CHANGELOG entries for automated PRs
+
+- 🐛 Bug Fixes: UI/display and data handling improvements
+  - fix(display): various UI fixes (auto-refresh toggle behavior, resource identifier in delete dialog, indentation fix in table tool, SendMessage prompts handling)
+  - fix(display): add SetInterval auto-refresh to table views
+  - fix(display): include proper escaping in SendMessage for visibility
+  - feat(display): add Dialog, Tabs, ExpandableRow, Loader, If to generated UI (contextual UI improvements)
+
+- ✨ Features: UI enhancements and data tooling
+  - feat(display): auto-refresh toggle with persistent state
+  - feat(display): add SetInterval auto-refresh to table views
+  - feat: schema-aware form data coercion for POST/PUT tools
+
+- 📚 Documentation: changelog updates
+  - docs: update CHANGELOG.md for automated PRs and PRs #79/#80/#82/#83
+
+Note: Merge commits and purely metadata updates have been omitted per guidelines.
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/85
+
+
 ## [3.2.4+44a9a2c] - 2026-04-24
 
 ### Changed
@@ -37,6 +70,25 @@
 Note: Removed update/merge/metadata-only commits per guidance.
 
 **Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/82
+
+
+
+- ✨ Features
+  - feat(introspection): generic OpenAPI improvements for complex specs, including configurable max_depth for schema display and improved oneOf/anyOf handling
+
+- 🔧 Chores & Improvements
+  - CI/CD and staging workflow optimizations around merging main/develop into staging
+  - Version metadata updates and automated changelog/documentation workflow adjustments
+
+- ⚠️ Breaking Changes
+  - None identified
+
+- 📚 Documentation
+  - Documentation updates to CHANGELOG.md for PRs (automated)
+
+Note: Merges, update-only commits, and non-user-facing metadata updates were omitted per guidelines.
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/83
 
 
 ## [3.2.3]P26-04-23
