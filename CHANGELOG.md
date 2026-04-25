@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.2.6-alpha+acee146] - 2026-04-25
+
+### Changed
+
+- Dependencies updated
+
 ## [3.2.5]P26-04-25
 
 ### Changed
@@ -31,6 +37,15 @@
 Note: Merge commits and purely metadata updates have been omitted per guidelines.
 
 **Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/85
+
+
+
+- 🔧 Chores & Improvements: Sync main into staging after releases and merge develop into staging
+- 🐛 Bug Fixes: fix(build) remove duplicate force-include causing PyPI upload rejection
+- ⚠️ Breaking Changes: none
+- 📚 Documentation: update CHANGELOG.md entries (automated)
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/86
 
 
 ## [3.2.4+44a9a2c] - 2026-04-24
