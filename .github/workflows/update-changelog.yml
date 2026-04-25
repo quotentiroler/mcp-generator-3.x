@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write  # For committing changes
+      actions: write   # For dispatching auto-pr-to-main
 
     steps:
     - name: Checkout staging branch
@@ -227,6 +228,23 @@ jobs:
             fi
           fi
         done
+
+    - name: Trigger Auto PR to Main
+      if: always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          try {
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'auto-pr-to-main.yml',
+              ref: 'staging'
+            });
+            console.log('✅ Dispatched auto-pr-to-main workflow');
+          } catch (error) {
+            console.log(`⚠️  Could not dispatch auto-pr-to-main: ${error.message}`);
+          }
 
     - name: Summary
       if: always()
