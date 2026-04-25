@@ -1,0 +1,285 @@
+# FHIR R4/R5 OpenAPI Overlay
+# ============================================================================
+# Domain-specific enrichment for HL7 FHIR APIs.
+#
+# Usage:
+#   generate-mcp --overlay mcp_generator/overlays/fhir.overlay.yaml \
+#                --schema-depth 5
+#
+# This overlay adds AI-agent-friendly descriptions to common FHIR patterns
+# that would otherwise appear as opaque parameter names or empty summaries.
+# The generic engine improvements (polymorphism, depth, content-type) handle
+# the structural complexity; this overlay handles the *semantic* layer.
+# ============================================================================
+
+overlay: "1.0.0"
+info:
+  title: FHIR R4/R5 Agent Enhancement Overlay
+  version: 1.0.0
+
+actions:
+  # -------------------------------------------------------------------------
+  # Info — make the API self-describing for LLM agents
+  # -------------------------------------------------------------------------
+  - target: $.info
+    update:
+      x-mcp-hints:
+        domain: healthcare
+        content-type: application/fhir+json
+        recommended-schema-depth: 5
+        auth-note: >
+          Most FHIR servers require SMART on FHIR OAuth2 or HTTP Bearer tokens.
+          Obtain credentials from the server's /metadata (CapabilityStatement) endpoint.
+
+  # -------------------------------------------------------------------------
+  # Common FHIR search parameters
+  # -------------------------------------------------------------------------
+  # These appear on almost every resource endpoint.  FHIR search modifiers
+  # (e.g. :exact, :contains, :missing) are hard for an AI to infer from
+  # the raw OpenAPI parameter name alone.
+
+  # --- _id ---
+  - target: $.components.parameters._id
+    update:
+      description: >
+        Logical id of the resource. Matches the Resource.id element.
+        Supports comma-separated values for OR search (e.g. "123,456").
+
+  # --- _lastUpdated ---
+  - target: $.components.parameters._lastUpdated
+    update:
+      description: >
+        Date the resource was last modified. Supports FHIR date prefixes:
+        eq (default), ne, gt, lt, ge, le, sa, eb, ap.
+        Example: "ge2024-01-01" for resources updated since Jan 1 2024.
+
+  # --- _tag ---
+  - target: $.components.parameters._tag
+    update:
+      description: >
+        Tag (Coding) attached to the resource via Resource.meta.tag.
+        Format: system|code (e.g. "http://example.org/tags|important").
+
+  # --- _profile ---
+  - target: $.components.parameters._profile
+    update:
+      description: >
+        Canonical URL of a StructureDefinition the resource claims to conform to.
+        Example: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient".
+
+  # --- _security ---
+  - target: $.components.parameters._security
+    update:
+      description: >
+        Security label on the resource (Coding from Resource.meta.security).
+        Format: system|code. Used for access control labeling.
+
+  # --- _count ---
+  - target: $.components.parameters._count
+    update:
+      description: >
+        Maximum number of results per page in a search Bundle.
+        Server may cap this value. Default varies by server.
+
+  # --- _sort ---
+  - target: $.components.parameters._sort
+    update:
+      description: >
+        Comma-separated list of sort fields. Prefix with '-' for descending.
+        Example: "-date,name" sorts by date descending, then name ascending.
+
+  # --- _include ---
+  - target: $.components.parameters._include
+    update:
+      description: >
+        Include referenced resources in the search Bundle.
+        Format: SourceType:searchParam (e.g. "MedicationRequest:patient").
+        Use _include:iterate for chained includes.
+
+  # --- _revinclude ---
+  - target: $.components.parameters._revinclude
+    update:
+      description: >
+        Reverse include: include resources that reference the matched resources.
+        Format: SourceType:searchParam (e.g. "Provenance:target").
+
+  # --- _summary ---
+  - target: $.components.parameters._summary
+    update:
+      description: >
+        Request a reduced representation. Values: true (summary only),
+        false (full), text (narrative only), count (count only), data (no text).
+
+  # --- _elements ---
+  - target: $.components.parameters._elements
+    update:
+      description: >
+        Comma-separated list of element names to include in the response.
+        Reduces payload size. Mandatory elements are always returned.
+
+  # --- _total ---
+  - target: $.components.parameters._total
+    update:
+      description: >
+        Whether to include Bundle.total in the response. Values:
+        none, estimate, accurate. Defaults to server preference.
+
+  # --- _contained ---
+  - target: $.components.parameters._contained
+    update:
+      description: >
+        How to handle contained resources in search. Values:
+        false (ignore), true (search contained too), both.
+
+  # -------------------------------------------------------------------------
+  # Common FHIR resource search parameters
+  # -------------------------------------------------------------------------
+
+  # Patient search params
+  - target: $.components.parameters.patient
+    update:
+      description: >
+        Reference to a Patient resource. Format: "Patient/123" or just "123".
+        Most clinical resources can be searched by patient.
+
+  - target: $.components.parameters.subject
+    update:
+      description: >
+        Reference to the subject of the resource (usually a Patient).
+        Format: "Patient/123". Some resources allow Group or Device subjects.
+
+  - target: $.components.parameters.date
+    update:
+      description: >
+        Clinically relevant date. Supports FHIR date prefixes:
+        eq, ne, gt, lt, ge, le, sa, eb, ap. Example: "ge2024-01-01".
+        For date ranges, repeat the parameter: "ge2024-01-01&date=le2024-12-31".
+
+  - target: $.components.parameters.code
+    update:
+      description: >
+        Code or Coding value. Format: system|code
+        (e.g. "http://loinc.org|12345-6") or just "12345-6" for any system.
+        Supports :text modifier for display text search.
+
+  - target: $.components.parameters.status
+    update:
+      description: >
+        Resource status (e.g. "active", "completed", "cancelled").
+        Supports comma-separated OR search: "active,completed".
+
+  - target: $.components.parameters.identifier
+    update:
+      description: >
+        Business identifier (system|value). Example:
+        "http://hospital.example.org/mrn|12345" or just "12345" for any system.
+
+  - target: $.components.parameters.category
+    update:
+      description: >
+        Classification of the resource. Format: system|code.
+        Example: "http://terminology.hl7.org/CodeSystem/observation-category|vital-signs".
+
+  # -------------------------------------------------------------------------
+  # FHIR interaction descriptions (operation summaries)
+  # -------------------------------------------------------------------------
+  # Many FHIR OpenAPI specs leave operation summaries empty or terse.
+  # These patterns match FHIR's RESTful interaction model.
+
+  # --- Metadata / CapabilityStatement ---
+  - target: $.paths['/metadata'].get.description
+    update: >
+      Retrieve the server's CapabilityStatement (FHIR conformance resource).
+      Returns supported resources, search parameters, operations, and security
+      configuration. Use this to discover what the server can do.
+
+  - target: $.paths['/metadata'].get.summary
+    update: Get server CapabilityStatement (conformance/capability discovery)
+
+  # --- $everything operation ---
+  - target: $.paths['/Patient/{id}/$everything'].get.description
+    update: >
+      Retrieve all data for a specific Patient (Patient/$everything operation).
+      Returns a searchset Bundle containing the Patient and all resources that
+      reference or are referenced by the Patient. Use _since and _count to
+      control scope. Warning: may return large result sets.
+
+  - target: $.paths['/Patient/{id}/$everything'].get.summary
+    update: Fetch complete patient record (all linked resources)
+
+  # --- $validate operation ---
+  - target: $.paths['/{resourceType}/$validate'].post.description
+    update: >
+      Validate a FHIR resource against its StructureDefinition and server rules.
+      Returns an OperationOutcome with validation results (errors, warnings, info).
+      Does not create or modify any resource.
+
+  # --- Batch / Transaction ---
+  - target: $.paths['/'].post.description
+    update: >
+      Submit a FHIR Bundle of type 'batch' or 'transaction'. Batch processes each
+      entry independently (partial success allowed). Transaction is all-or-nothing.
+      Returns a Bundle with one entry per request entry, containing the result or
+      OperationOutcome for each.
+
+  - target: $.paths['/'].post.summary
+    update: Submit batch or transaction Bundle
+
+  # -------------------------------------------------------------------------
+  # FHIR-specific schema hints (x-mcp-hints on common schemas)
+  # -------------------------------------------------------------------------
+
+  - target: $.components.schemas.Bundle
+    update:
+      x-mcp-hints:
+        description: >
+          A container for a collection of resources. Bundle.type determines
+          semantics: searchset (search results), batch/transaction (multi-op),
+          document, message, collection, history.
+        pagination: >
+          Search result Bundles include link entries with relation=next for
+          pagination. Follow the url in Bundle.link[rel=next] to get the
+          next page. Bundle.total indicates total matching resources.
+
+  - target: $.components.schemas.OperationOutcome
+    update:
+      x-mcp-hints:
+        description: >
+          FHIR error/warning/info response. Check issue[].severity
+          (fatal, error, warning, information) and issue[].code for details.
+          Always returned on validation failures and 4xx/5xx responses.
+
+  - target: $.components.schemas.Reference
+    update:
+      x-mcp-hints:
+        description: >
+          A reference to another FHIR resource. Can be: a relative reference
+          ("Patient/123"), absolute URL, logical identifier (identifier-based),
+          or contained reference ("#contained-id"). The 'type' field narrows
+          the target resource type.
+
+  - target: $.components.schemas.CodeableConcept
+    update:
+      x-mcp-hints:
+        description: >
+          A concept defined by one or more Codings (system + code pairs) plus
+          optional human-readable text. Use coding[].system and coding[].code
+          for machine processing; use text for display. Multiple codings
+          represent the same concept in different code systems.
+
+  - target: $.components.schemas.Coding
+    update:
+      x-mcp-hints:
+        description: >
+          A code from a terminology system. Key fields: system (URI of the
+          code system, e.g. http://loinc.org), code (the actual code value),
+          display (human-readable name). Version is optional.
+
+  - target: $.components.schemas.Extension
+    update:
+      x-mcp-hints:
+        description: >
+          FHIR extension element. Every extension has a url (canonical URI
+          identifying the extension definition) and a value[x] (polymorphic
+          value — e.g. valueString, valueCode, valueReference). Extensions
+          are how FHIR handles data elements not in the base spec.
