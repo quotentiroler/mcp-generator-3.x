@@ -45,6 +45,25 @@ Note: Removed update/merge/metadata-only commits per guidance.
 **Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/82
 
 
+
+- ✨ Features
+  - feat(introspection): generic OpenAPI improvements for complex specs, including configurable max_depth for schema display and improved oneOf/anyOf handling
+
+- 🔧 Chores & Improvements
+  - CI/CD and staging workflow optimizations around merging main/develop into staging
+  - Version metadata updates and automated changelog/documentation workflow adjustments
+
+- ⚠️ Breaking Changes
+  - None identified
+
+- 📚 Documentation
+  - Documentation updates to CHANGELOG.md for PRs (automated)
+
+Note: Merges, update-only commits, and non-user-facing metadata updates were omitted per guidelines.
+
+**Full Changelog**: https://github.com/quotentiroler/mcp-generator-3.x/pull/83
+
+
 ## [3.2.3]P26-04-23
 
 ### Changed
