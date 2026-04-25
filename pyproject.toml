@@ -51,9 +51,6 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["mcp_generator"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"mcp_generator/overlays" = "mcp_generator/overlays"
-
 [tool.hatch.metadata]
 allow-direct-references = true
 
