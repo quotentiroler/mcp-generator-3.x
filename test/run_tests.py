@@ -17,15 +17,15 @@ from pathlib import Path
 import httpx
 
 # Ensure UTF-8 encoding for Windows console
-if sys.platform == 'win32':
+if sys.platform == "win32":
     try:
         # Set console to UTF-8 mode on Windows
-        os.system('chcp 65001 > nul 2>&1')
+        os.system("chcp 65001 > nul 2>&1")
         # Reconfigure stdout/stderr encoding if available (Python 3.7+)
-        if hasattr(sys.stdout, 'reconfigure'):
-            sys.stdout.reconfigure(encoding='utf-8')
-        if hasattr(sys.stderr, 'reconfigure'):
-            sys.stderr.reconfigure(encoding='utf-8')
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8")
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8")
     except (AttributeError, OSError):
         pass  # Not available or failed, continue anyway
 
@@ -40,7 +40,7 @@ def wait_for_server(url: str, timeout: int = 30) -> bool:
             with httpx.Client(timeout=2.0) as client:
                 # Try health endpoint first (if it exists)
                 try:
-                    response = client.get(url.replace('/mcp', '/health'))
+                    response = client.get(url.replace("/mcp", "/health"))
                     if response.status_code == 200:
                         print(f"✓ Server ready at {url} (via /health)")
                         return True
@@ -85,30 +85,33 @@ def run_tests(test_filter: str | None = None):
 
     if not server_script.exists():
         print(f"❌ Server script not found: {server_script}")
-        print(f"   Make sure you've generated the MCP server first.")
+        print("   Make sure you've generated the MCP server first.")
         return 1
 
     if not test_dir.exists():
         print(f"❌ Test directory not found: {test_dir}")
-        print(f"   Make sure you've generated the tests first.")
+        print("   Make sure you've generated the tests first.")
         return 1
 
     # Check if port is already in use and kill the process
     import socket
+
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = sock.connect_ex(('localhost', int(server_port)))
+        result = sock.connect_ex(("localhost", int(server_port)))
         sock.close()
         if result == 0:
             print(f"⚠️  Port {server_port} is already in use. Attempting to free it...")
-            if sys.platform == 'win32':
+            if sys.platform == "win32":
                 # On Windows, try to find and kill the process using the port
                 try:
-                    netstat_result = subprocess.run(['netstat', '-ano'], capture_output=True, text=True)
-                    for line in netstat_result.stdout.split('\n'):
-                        if f':{server_port}' in line and 'LISTENING' in line:
+                    netstat_result = subprocess.run(
+                        ["netstat", "-ano"], capture_output=True, text=True
+                    )
+                    for line in netstat_result.stdout.split("\n"):
+                        if f":{server_port}" in line and "LISTENING" in line:
                             pid = line.split()[-1]
-                            subprocess.run(['taskkill', '/F', '/PID', pid], capture_output=True)
+                            subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True)
                             print(f"   ✓ Killed process {pid} using port {server_port}")
                             time.sleep(1)  # Give it a moment to release
                             break
@@ -117,24 +120,26 @@ def run_tests(test_filter: str | None = None):
             else:
                 # On Unix-like systems
                 try:
-                    lsof_result = subprocess.run(['lsof', '-ti', f':{server_port}'], capture_output=True, text=True)
+                    lsof_result = subprocess.run(
+                        ["lsof", "-ti", f":{server_port}"], capture_output=True, text=True
+                    )
                     if lsof_result.stdout.strip():
                         pid = lsof_result.stdout.strip()
-                        subprocess.run(['kill', '-9', pid], capture_output=True)
+                        subprocess.run(["kill", "-9", pid], capture_output=True)
                         print(f"   ✓ Killed process {pid} using port {server_port}")
                         time.sleep(1)  # Give it a moment to release
                 except Exception as e:
                     print(f"   ⚠️  Could not automatically free port: {e}")
-    except Exception as e:
+    except Exception:
         pass  # Port check failed, continue anyway
 
     # Start server
-    print("\n" + "="*60)
-    print(f"Starting MCP Server")
+    print("\n" + "=" * 60)
+    print("Starting MCP Server")
     print(f"Server: {server_script.name}")
     print(f"Transport: HTTP, Port: {server_port}")
     print(f"Working directory: {generated_mcp_dir}")
-    print("="*60)
+    print("=" * 60)
 
     server_env = os.environ.copy()
 
@@ -145,14 +150,23 @@ def run_tests(test_filter: str | None = None):
     # Start the server directly with Python
     # Use PIPE to capture output for debugging when startup fails
     server_process = subprocess.Popen(
-        ["uv", "run", "python", server_script.name, "--transport", "http", "--port", str(server_port)],
+        [
+            "uv",
+            "run",
+            "python",
+            server_script.name,
+            "--transport",
+            "http",
+            "--port",
+            str(server_port),
+        ],
         cwd=str(generated_mcp_dir),
         env=server_env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
         encoding="utf-8",
-        errors="replace"
+        errors="replace",
     )
 
     # Give the process a moment to fail fast if there's an immediate error
@@ -161,11 +175,11 @@ def run_tests(test_filter: str | None = None):
         # Server failed to start - capture and show the output
         stdout, _ = server_process.communicate(timeout=5)
         print(f"❌ Server process exited immediately with code {server_process.returncode}")
-        print(f"   Check that the server is properly configured.")
+        print("   Check that the server is properly configured.")
         if stdout:
-            print(f"\n📋 Server output:")
+            print("\n📋 Server output:")
             print("   " + "\n   ".join(stdout.strip().split("\n")))
-        print(f"\n💡 Try running manually:")
+        print("\n💡 Try running manually:")
         print(f"   cd {generated_mcp_dir}")
         print(f"   uv run python {server_script.name} --transport http --port {server_port}")
         return 1
@@ -174,15 +188,15 @@ def run_tests(test_filter: str | None = None):
 
     # Create a background thread to consume server output to prevent blocking
     # but keep it available for debugging if needed
-    import threading
     import queue
+    import threading
 
     output_queue = queue.Queue()
 
     def consume_output():
         """Consume server output in background to prevent pipe blocking."""
         try:
-            for line in iter(server_process.stdout.readline, ''):
+            for line in iter(server_process.stdout.readline, ""):
                 if line:
                     output_queue.put(line.strip())
             server_process.stdout.close()
@@ -195,8 +209,10 @@ def run_tests(test_filter: str | None = None):
     try:
         # Wait for server to be ready
         if not wait_for_server(server_url, timeout=30):
-            print(f"❌ Server failed to start within 30 seconds")
-            print(f"   Server process status: {'running' if server_process.poll() is None else f'exited with code {server_process.returncode}'}")
+            print("❌ Server failed to start within 30 seconds")
+            print(
+                f"   Server process status: {'running' if server_process.poll() is None else f'exited with code {server_process.returncode}'}"
+            )
 
             # Show recent server output for debugging
             recent_output = []
@@ -207,11 +223,11 @@ def run_tests(test_filter: str | None = None):
                 pass
 
             if recent_output:
-                print(f"\n📋 Recent server output:")
+                print("\n📋 Recent server output:")
                 for line in recent_output[-10:]:  # Show last 10 lines
                     print(f"   {line}")
 
-            print(f"\n💡 Try running manually:")
+            print("\n💡 Try running manually:")
             print(f"   cd {generated_mcp_dir}")
             print(f"   uv run python {server_script.name} --transport http --port {server_port}")
             server_process.terminate()
@@ -219,12 +235,12 @@ def run_tests(test_filter: str | None = None):
             return 1
 
         # Run tests
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         if test_filter:
             print(f"Running Test Suite (filter: {test_filter})")
         else:
             print("Running Test Suite")
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")
 
         test_env = os.environ.copy()
         test_env["MCP_SERVER_URL"] = server_url
@@ -235,7 +251,11 @@ def run_tests(test_filter: str | None = None):
         if test_filter:
             # If it's a test file pattern (contains .py or ::), use it directly
             if ".py" in test_filter or "::" in test_filter:
-                test_path = str(test_dir / test_filter) if not test_filter.startswith("test/") else str(project_root / test_filter)
+                test_path = (
+                    str(test_dir / test_filter)
+                    if not test_filter.startswith("test/")
+                    else str(project_root / test_filter)
+                )
                 pytest_cmd.append(test_path)
             else:
                 # Otherwise treat it as a -k pattern match
@@ -253,18 +273,14 @@ def run_tests(test_filter: str | None = None):
             pytest_cmd.extend(["--ignore", str(behavioral_test)])
 
         # Use uv run to execute pytest with the correct environment
-        result = subprocess.run(
-            pytest_cmd,
-            cwd=str(project_root),
-            env=test_env
-        )
+        result = subprocess.run(pytest_cmd, cwd=str(project_root), env=test_env)
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         if result.returncode == 0:
             print("✓ All tests passed!")
         else:
             print("❌ Some tests failed")
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")
 
         return result.returncode
 
@@ -291,22 +307,19 @@ def run_tests(test_filter: str | None = None):
                 print("⚠️  Server process may still be running")
 
         # On Windows, ensure port is actually freed by killing any lingering processes
-        if sys.platform == 'win32':
+        if sys.platform == "win32":
             time.sleep(0.5)  # Brief pause to let OS cleanup
             try:
                 netstat_result = subprocess.run(
-                    ['netstat', '-ano'],
-                    capture_output=True,
-                    text=True,
-                    timeout=2
+                    ["netstat", "-ano"], capture_output=True, text=True, timeout=2
                 )
-                for line in netstat_result.stdout.split('\n'):
-                    if f':{server_port}' in line and 'LISTENING' in line:
+                for line in netstat_result.stdout.split("\n"):
+                    if f":{server_port}" in line and "LISTENING" in line:
                         pid = line.split()[-1]
                         if pid != str(os.getpid()):  # Don't kill ourselves
-                            subprocess.run(['taskkill', '/F', '/PID', pid],
-                                         capture_output=True,
-                                         timeout=2)
+                            subprocess.run(
+                                ["taskkill", "/F", "/PID", pid], capture_output=True, timeout=2
+                            )
                             print(f"✓ Cleaned up lingering process {pid} on port {server_port}")
             except Exception:
                 pass  # Best effort cleanup
@@ -318,13 +331,13 @@ def main():
 
     parser = argparse.ArgumentParser(
         description="Test runner for Swagger Petstore",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "--test",
         "-t",
         help="Specific test file or test pattern to run (e.g., test_tools, test_cache_generated.py::test_cache_hit_miss)",
-        default=None
+        default=None,
     )
 
     args = parser.parse_args()
